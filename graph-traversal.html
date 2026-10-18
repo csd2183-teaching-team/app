@@ -265,17 +265,6 @@ details .ans{font-family:var(--mono);font-size:13px;margin-top:8px;display:flex;
           </div>
         </div>
 
-        <div class="panel">
-          <h3 class="label">Try this</h3>
-          <ol class="tasks">
-            <li>Load <b>Grid 4×3</b> and run BFS from A, then DFS. Look at the tree edges. Which tree gives the shortest route from A to L?</li>
-            <li>Turn on <b>Predict mode</b> on the <b>Campus map</b> graph. Can you get every BFS prediction right on the first try? Then try DFS (stack).</li>
-            <li>Load <b>Course prerequisites</b> (directed) and run DFS (recursive). Find a forward or cross edge. Is there any back edge? What does that tell you about cycles?</li>
-            <li>Build an undirected graph where BFS and DFS visit the nodes in exactly the same order.</li>
-            <li>Load <b>Two islands</b>. Run BFS from A with and without “Visit every component”. How would you count the components?</li>
-            <li>Compare <b>DFS (stack)</b> with <b>DFS (recursive)</b> on <b>Cycle with chords</b>. Why can the stack hold the same node twice?</li>
-          </ol>
-        </div>
       </div>
 
       <div class="col">
@@ -320,14 +309,11 @@ details .ans{font-family:var(--mono);font-size:13px;margin-top:8px;display:flex;
 <script>
 /* ---------- topic registry (add future weeks here) ---------- */
 const TOPICS = [
-  {id:'arrays', name:'Arrays & Linked Lists'},
-  {id:'stacks', name:'Stacks & Queues'},
-  {id:'trees', name:'Binary Search Trees'},
-  {id:'heaps', name:'Heaps'},
-  {id:'hash', name:'Hash Tables'},
   {id:'graphs', name:'Graph Traversal', live:true},
+  {id:'mst', name:'Minimum Spanning Trees'},
   {id:'paths', name:'Shortest Paths'},
-  {id:'mst', name:'Spanning Trees'},
+  {id:'dp', name:'Dynamic Programming'},
+  {id:'greedy', name:'Greedy Algorithms'},
 ];
 const CURRENT_TOPIC = 'graphs';
 document.getElementById('topics').innerHTML = TOPICS.map(t =>
