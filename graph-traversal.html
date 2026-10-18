@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Data Structures Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: lab bench — the graph sits on graph paper at left, instrument readouts (queue/stack, code, tables) stack at right */
+:root{
+  --paper:#f2f5f9; --panel:#ffffff; --ink:#152038; --muted:#5a6781; --line:#d6deea; --grid:#e2e8f1;
+  --accent:#2b56e0; --accent-soft:#e3eaff;
+  --frontier:#efb128; --current:#e2437a; --done:#14998a; --cross:#7b61e8;
+  --on-warm:#271c00; --on-strong:#ffffff; --node:#ffffff;
+  --display:'Bricolage Grotesque','Avenir Next',system-ui,sans-serif;
+  --body:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0e1320; --panel:#151c2c; --ink:#e4e9f4; --muted:#95a2bc; --line:#2a344c; --grid:#192135;
+  --accent:#86a2ff; --accent-soft:#1f2a4a;
+  --frontier:#f4c34e; --current:#ff6e9c; --done:#35c2ae; --cross:#a490ff;
+  --on-warm:#271c00; --on-strong:#0e1320; --node:#1b2336; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --paper:#0e1320; --panel:#151c2c; --ink:#e4e9f4; --muted:#95a2bc; --line:#2a344c; --grid:#192135;
+  --accent:#86a2ff; --accent-soft:#1f2a4a;
+  --frontier:#f4c34e; --current:#ff6e9c; --done:#35c2ae; --cross:#a490ff;
+  --on-warm:#271c00; --on-strong:#0e1320; --node:#1b2336; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* header + topic nav */
+header{display:flex;flex-direction:column;gap:12px}
+.brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.brand h1{font-size:clamp(24px,3.4vw,34px);font-weight:800}
+.brand p{margin:0;color:var(--muted)}
+.topics{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.topic{flex:none;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 14px;cursor:pointer;display:flex;gap:8px;align-items:center;white-space:nowrap}
+.topic[aria-current="page"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.topic[disabled]{cursor:default;color:var(--muted);background:transparent}
+.tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:1px 7px;border-radius:999px;border:1px solid currentColor;opacity:.85}
+.topic[aria-current="page"] .tag{background:var(--frontier);color:var(--on-warm);border-color:var(--frontier);opacity:1}
+
+.lead{display:flex;flex-direction:column;gap:4px}
+.lead h2{font-size:clamp(22px,2.6vw,28px);font-weight:800}
+.lead p{margin:0;color:var(--muted);max-width:72ch}
+
+/* main grid */
+.lab{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:980px){.lab{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+
+/* controls */
+.controls{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 11px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--panel)}
+select{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.check{display:flex;gap:6px;align-items:center;cursor:pointer;user-select:none}
+.check input{accent-color:var(--accent);width:16px;height:16px}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 12px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--panel);border-color:var(--accent);font-weight:600;min-width:84px}
+.btn:disabled{opacity:.4;cursor:default}
+
+/* canvas */
+.stage{padding:0;overflow:hidden}
+.stage-top{display:flex;flex-wrap:wrap;gap:10px 16px;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
+.hint{color:var(--muted);font-size:13px}
+#graph{display:block;width:100%;height:auto;aspect-ratio:800/520;max-width:100%;touch-action:none;
+  background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:20px 20px}
+#graph.mode-node{cursor:copy}
+#graph.mode-edge{cursor:crosshair}
+#graph.mode-delete{cursor:not-allowed}
+.node{cursor:grab}
+.node .body{fill:var(--node);stroke:var(--ink);stroke-width:2;transition:fill .2s}
+.node .lbl{font-family:var(--display);font-weight:800;font-size:17px;text-anchor:middle;fill:var(--ink);pointer-events:none}
+.node .sub{font-family:var(--mono);font-size:12px;text-anchor:middle;fill:var(--muted);pointer-events:none}
+.node .halo{fill:none;stroke:var(--ink);stroke-width:1.5;stroke-dasharray:3 4;opacity:0}
+.node.is-start .halo{opacity:.8}
+.node.st-frontier .body{fill:var(--frontier);stroke:var(--frontier)}
+.node.st-frontier .lbl{fill:var(--on-warm)}
+.node.st-current .body{fill:var(--current);stroke:var(--current)}
+.node.st-current .lbl{fill:var(--on-strong)}
+.node.st-done .body{fill:var(--done);stroke:var(--done)}
+.node.st-done .lbl{fill:var(--on-strong)}
+.node.is-current .body{stroke:var(--ink);stroke-width:3.5}
+.node.pending .body{stroke:var(--accent);stroke-width:4}
+.node.wrong .body{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.badge{fill:var(--ink)}
+.badge-t{fill:var(--paper);font-family:var(--mono);font-size:11px;font-weight:600;text-anchor:middle;pointer-events:none}
+.awaiting .node{cursor:pointer}
+.awaiting .node:hover .body{stroke:var(--accent);stroke-width:4}
+
+.edge{stroke:var(--muted);stroke-width:2.5;opacity:.6;fill:none}
+.edge.tree{stroke:var(--done);stroke-width:5;opacity:1}
+.edge.seen{stroke-dasharray:4 6;opacity:.45}
+.edge.back{stroke:var(--current);stroke-width:3;stroke-dasharray:9 6;opacity:1}
+.edge.forward,.edge.cross{stroke:var(--cross);stroke-width:3;stroke-dasharray:2 6;stroke-linecap:round;opacity:1}
+.edge.exam{stroke:var(--accent);stroke-width:6;opacity:1;stroke-dasharray:none}
+.hit{stroke:transparent;stroke-width:16;fill:none}
+.mode-delete .hit{cursor:not-allowed}
+.rubber{stroke:var(--accent);stroke-width:2;stroke-dasharray:5 5;pointer-events:none}
+.m-idle,.m-seen{fill:var(--muted)} .m-tree{fill:var(--done)} .m-back{fill:var(--current)} .m-cross,.m-forward{fill:var(--cross)} .m-exam{fill:var(--accent)}
+.empty-msg{font-family:var(--display);font-size:20px;fill:var(--muted);text-anchor:middle}
+
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;padding:10px 14px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:13px;height:13px;border-radius:50%;border:2px solid var(--ink);background:var(--node);display:inline-block}
+.dot.f{background:var(--frontier);border-color:var(--frontier)} .dot.c{background:var(--current);border-color:var(--current)} .dot.d{background:var(--done);border-color:var(--done)}
+.ln{width:22px;height:0;border-top:4px solid var(--done);display:inline-block}
+.ln.b{border-top:3px dashed var(--current)} .ln.x{border-top:3px dotted var(--cross)} .ln.e{border-top:4px solid var(--accent)}
+
+/* playback */
+.play{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.play .grp{display:flex;gap:6px;flex-wrap:wrap}
+.counter{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+input[type=range]{accent-color:var(--accent);width:110px}
+.scrub{flex:1 1 100%;width:100%}
+.predict-bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:14px}
+.score{font-family:var(--mono);font-size:13px;color:var(--muted)}
+
+/* readouts */
+.now{border-left:4px solid var(--accent)}
+.now p{margin:0;font-size:16px;min-height:3em}
+.now.ask{border-left-color:var(--current)}
+.now .fb{margin-top:6px;font-size:14px;font-weight:600;min-height:0}
+.fb.ok{color:var(--done)} .fb.no{color:var(--current)}
+.ds{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:44px;font-family:var(--mono)}
+.ds .end{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.chip{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:34px;padding:0 8px;border-radius:6px;border:2px solid var(--frontier);background:var(--frontier);color:var(--on-warm);font-weight:600;font-family:var(--mono)}
+.chip.hot{border-color:var(--ink);box-shadow:0 0 0 2px var(--panel) inset}
+.chip.stale{background:transparent;color:var(--muted);border-color:var(--line);text-decoration:line-through}
+.chip.call{background:var(--accent-soft);border-color:var(--accent);color:var(--ink);font-size:13px}
+.chip.call.hot{background:var(--current);border-color:var(--current);color:var(--on-strong)}
+.chip.ord{background:var(--done);border-color:var(--done);color:var(--on-strong);position:relative}
+.chip.ord small{position:absolute;top:-8px;right:-6px;background:var(--ink);color:var(--paper);font-size:10px;border-radius:999px;padding:0 4px;line-height:15px}
+.muted{color:var(--muted);font-size:13px}
+.code{font-family:var(--mono);font-size:13px;line-height:1.75;margin:0;overflow-x:auto;white-space:pre;counter-reset:ln}
+.code div{padding:0 8px;border-radius:4px}
+.code div::before{counter-increment:ln;content:counter(ln);display:inline-block;width:1.6em;color:var(--muted);opacity:.6}
+.code div.on{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+tr.cur td{background:var(--accent-soft)}
+.adj{font-family:var(--mono);font-size:13px;display:flex;flex-direction:column;gap:2px}
+.adj b{display:inline-block;width:1.6em}
+.adj .on{color:var(--accent);font-weight:600;text-decoration:underline}
+.adj .row.cur{background:var(--accent-soft);border-radius:4px}
+details summary{cursor:pointer;font-weight:600}
+details .ans{font-family:var(--mono);font-size:13px;margin-top:8px;display:flex;flex-direction:column;gap:4px}
+.tasks{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:8px;max-width:75ch}
+.tasks li::marker{font-family:var(--mono);color:var(--muted)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+@media (max-width:560px){.two{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1><a href="./" style="color:inherit;text-decoration:none">Data Structures Lab</a></h1>
+      <p>Build a case, run the algorithm one step at a time, and watch the data structures change.</p>
+    </div>
+    <nav class="topics" id="topics" aria-label="Topics"></nav>
+  </header>
+
+  <section data-topic="graphs" class="col" style="gap:18px">
+    <div class="lead">
+      <h2>Graph Traversal: BFS and DFS</h2>
+      <p>Breadth-first search spreads out in waves using a <strong>queue</strong>. Depth-first search dives down one path before backing up, using a <strong>stack</strong> (or the call stack, when written recursively). Pick a graph, pick a start node, and step through.</p>
+    </div>
+
+    <div class="panel controls">
+      <div class="field">
+        <span class="label">Algorithm</span>
+        <div class="seg" id="algo">
+          <button type="button" data-v="bfs" aria-pressed="true">BFS (queue)</button>
+          <button type="button" data-v="iter">DFS (stack)</button>
+          <button type="button" data-v="rec">DFS (recursive)</button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label" for="start">Start node</label>
+        <select id="start"></select>
+      </div>
+      <div class="field">
+        <label class="label" for="preset">Example graph</label>
+        <select id="preset"></select>
+      </div>
+      <div class="field" style="gap:6px">
+        <span class="label">Options</span>
+        <label class="check"><input type="checkbox" id="directed"> Directed edges</label>
+        <label class="check"><input type="checkbox" id="allc"> Visit every component</label>
+      </div>
+    </div>
+
+    <div class="lab">
+      <div class="col">
+        <div class="panel stage">
+          <div class="stage-top">
+            <div class="seg" id="mode" aria-label="Edit mode">
+              <button type="button" data-v="move" aria-pressed="true">Move</button>
+              <button type="button" data-v="node">Add node</button>
+              <button type="button" data-v="edge">Add edge</button>
+              <button type="button" data-v="delete">Delete</button>
+            </div>
+            <span class="hint" id="hint"></span>
+            <button type="button" class="btn" id="clear">Clear graph</button>
+          </div>
+          <svg id="graph" viewBox="0 0 800 520" role="img" aria-label="Graph canvas">
+            <defs id="defs"></defs>
+            <g id="edges"></g>
+            <line id="rubber" class="rubber" x1="0" y1="0" x2="0" y2="0" visibility="hidden"></line>
+            <g id="nodes"></g>
+          </svg>
+          <div class="legend">
+            <span><i class="dot"></i>unvisited</span>
+            <span><i class="dot f"></i><span id="lg-frontier">in queue</span></span>
+            <span><i class="dot c"></i>current</span>
+            <span><i class="dot d"></i>visited</span>
+            <span><i class="ln e"></i>edge being checked</span>
+            <span><i class="ln"></i>tree edge</span>
+            <span id="lg-back"><i class="ln b"></i>back edge</span>
+            <span id="lg-cross"><i class="ln x"></i>forward / cross</span>
+          </div>
+        </div>
+
+        <div class="panel play">
+          <div class="grp">
+            <button type="button" class="btn" id="b-reset" title="Back to step 1 (Home)">⏮ Reset</button>
+            <button type="button" class="btn" id="b-prev" title="Previous step (←)">◀ Back</button>
+            <button type="button" class="btn primary" id="b-play" title="Play / pause (Space)">▶ Play</button>
+            <button type="button" class="btn" id="b-next" title="Next step (→)">Next ▶</button>
+            <button type="button" class="btn" id="b-end" title="Jump to the result (End)">Result ⏭</button>
+          </div>
+          <label class="check" for="speed">Speed <input type="range" id="speed" min="1" max="10" value="5"></label>
+          <span class="counter" id="counter"></span>
+          <input type="range" class="scrub" id="scrub" min="0" max="0" value="0" aria-label="Scrub through steps">
+          <div class="predict-bar">
+            <label class="check"><input type="checkbox" id="predict"> Predict mode</label>
+            <span class="muted">Before each node is visited, you click the node you think comes next.</span>
+            <span class="score" id="score"></span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3 class="label">Try this</h3>
+          <ol class="tasks">
+            <li>Load <b>Grid 4×3</b> and run BFS from A, then DFS. Look at the tree edges. Which tree gives the shortest route from A to L?</li>
+            <li>Turn on <b>Predict mode</b> on the <b>Campus map</b> graph. Can you get every BFS prediction right on the first try? Then try DFS (stack).</li>
+            <li>Load <b>Course prerequisites</b> (directed) and run DFS (recursive). Find a forward or cross edge. Is there any back edge? What does that tell you about cycles?</li>
+            <li>Build an undirected graph where BFS and DFS visit the nodes in exactly the same order.</li>
+            <li>Load <b>Two islands</b>. Run BFS from A with and without “Visit every component”. How would you count the components?</li>
+            <li>Compare <b>DFS (stack)</b> with <b>DFS (recursive)</b> on <b>Cycle with chords</b>. Why can the stack hold the same node twice?</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="panel now" id="now">
+          <h3 class="label" id="now-title">What’s happening</h3>
+          <p id="msg"></p>
+          <p class="fb" id="fb"></p>
+        </div>
+        <div class="panel">
+          <h3 class="label" id="ds-title">Queue</h3>
+          <div class="ds" id="ds"></div>
+        </div>
+        <div class="panel">
+          <h3 class="label">Visit order</h3>
+          <div class="ds" id="order"></div>
+        </div>
+        <div class="panel">
+          <h3 class="label">Pseudocode</h3>
+          <div class="code" id="code"></div>
+        </div>
+        <div class="two">
+          <div class="panel">
+            <h3 class="label" id="tbl-title">Distances</h3>
+            <div class="tbl-wrap"><table id="tbl"></table></div>
+          </div>
+          <div class="panel">
+            <h3 class="label">Adjacency list</h3>
+            <div class="adj" id="adj"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <details>
+            <summary>Answer key for this graph</summary>
+            <div class="ans" id="ans"></div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ---------- topic registry (add future weeks here) ---------- */
+const TOPICS = [
+  {id:'arrays', name:'Arrays & Linked Lists'},
+  {id:'stacks', name:'Stacks & Queues'},
+  {id:'trees', name:'Binary Search Trees'},
+  {id:'heaps', name:'Heaps'},
+  {id:'hash', name:'Hash Tables'},
+  {id:'graphs', name:'Graph Traversal', live:true},
+  {id:'paths', name:'Shortest Paths'},
+  {id:'mst', name:'Spanning Trees'},
+];
+const CURRENT_TOPIC = 'graphs';
+document.getElementById('topics').innerHTML = TOPICS.map(t =>
+  `<button type="button" class="topic" ${t.live ? '' : 'disabled'} ${t.id === CURRENT_TOPIC ? 'aria-current="page"' : ''}>${t.name}<span class="tag">${t.id === CURRENT_TOPIC ? 'This week' : t.live ? 'Open' : 'Soon'}</span></button>`
+).join('');
+
+/* ---------- graph model ---------- */
+const $ = s => document.querySelector(s);
+const NS = 'http://www.w3.org/2000/svg';
+const R = 22, W = 800, H = 520;
+let G = {nodes: [], edges: [], directed: false};
+let start = 'A', algo = 'bfs', allComps = false, mode = 'move';
+let steps = [], idx = 0, timer = null;
+let pendingEdge = null, drag = null;
+let predict = false, awaiting = false, score = {first: 0, total: 0, missed: false};
+
+const PRESETS = {
+  campus: {name: 'Campus map', directed: false,
+    nodes: {A:[110,130], B:[290,70], C:[300,250], D:[480,140], E:[470,360], F:[660,90], G:[680,280], H:[150,400]},
+    edges: 'AB AC AH BD CD CE DF DG EG EH'},
+  tree: {name: 'Binary tree', directed: false,
+    nodes: {A:[400,60], B:[220,170], C:[580,170], D:[130,290], E:[310,290], F:[490,290], G:[670,290], H:[80,420], I:[180,420], J:[360,420]},
+    edges: 'AB AC BD BE CF CG DH DI EJ'},
+  grid: {name: 'Grid 4×3', directed: false,
+    nodes: {A:[160,110], B:[320,110], C:[480,110], D:[640,110], E:[160,260], F:[320,260], G:[480,260], H:[640,260], I:[160,410], J:[320,410], K:[480,410], L:[640,410]},
+    edges: 'AB BC CD EF FG GH IJ JK KL AE BF CG DH EI FJ GK HL'},
+  cycle: {name: 'Cycle with chords', directed: false,
+    nodes: (() => { const o = {}; 'ABCDEFGH'.split('').forEach((c, i) => { const a = -Math.PI / 2 + i * Math.PI / 4; o[c] = [400 + 200 * Math.cos(a), 260 + 200 * Math.sin(a)]; }); return o; })(),
+    edges: 'AB BC CD DE EF FG GH HA AE CG'},
+  islands: {name: 'Two islands', directed: false,
+    nodes: {A:[110,150], B:[260,90], C:[260,260], D:[110,360], E:[520,110], F:[690,170], G:[540,300], H:[700,380], I:[400,440]},
+    edges: 'AB AC BC CD EF EG FH GH'},
+  dag: {name: 'Course prerequisites', directed: true,
+    nodes: {A:[100,120], B:[100,360], C:[300,120], D:[300,360], E:[500,240], F:[700,120], G:[700,380]},
+    edges: 'AC AD BD CE DE CF EF EG BG'},
+  cyclic: {name: 'Directed with a cycle', directed: true,
+    nodes: {A:[120,260], B:[300,110], C:[500,110], D:[660,260], E:[500,410], F:[300,410]},
+    edges: 'AB BC CD DE EB AF FE'},
+  empty: {name: 'Empty (draw your own)', directed: false, nodes: {}, edges: ''},
+};
+
+function loadPreset(key) {
+  const p = PRESETS[key];
+  G = {directed: p.directed, nodes: Object.entries(p.nodes).map(([id, [x, y]]) => ({id, x, y})),
+       edges: p.edges.split(' ').filter(Boolean).map(s => ({u: s[0], v: s[1]}))};
+  $('#directed').checked = p.directed;
+  start = G.nodes[0]?.id || 'A';
+  graphChanged();
+}
+
+const node = id => G.nodes.find(n => n.id === id);
+const ek = (u, v) => G.directed ? u + '>' + v : (u < v ? u + '-' + v : v + '-' + u);
+const labels = () => G.nodes.map(n => n.id).sort();
+function nbrs(u) {
+  const out = [];
+  for (const e of G.edges) {
+    if (e.u === u) out.push(e.v);
+    else if (!G.directed && e.v === u) out.push(e.u);
+  }
+  return out.sort();
+}
+function addNode(x, y) {
+  const id = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').find(c => !node(c));
+  if (!id) { flashHint('26 nodes is the limit.'); return; }
+  G.nodes.push({id, x: clamp(x, R + 4, W - R - 4), y: clamp(y, R + 4, H - R - 20)});
+  if (!node(start)) start = id;
+  graphChanged();
+}
+function addEdge(u, v) {
+  if (u === v) { flashHint('Self-loops are not allowed here.'); return; }
+  if (G.edges.some(e => ek(e.u, e.v) === ek(u, v))) { flashHint('That edge already exists.'); return; }
+  G.edges.push({u, v});
+  graphChanged();
+}
+function removeNode(id) {
+  G.nodes = G.nodes.filter(n => n.id !== id);
+  G.edges = G.edges.filter(e => e.u !== id && e.v !== id);
+  if (start === id) start = labels()[0] || 'A';
+  graphChanged();
+}
+function removeEdge(key) {
+  G.edges = G.edges.filter(e => ek(e.u, e.v) !== key);
+  graphChanged();
+}
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* ---------- step recording ---------- */
+function recorder() {
+  const st = {line: [], msg: '', current: null, exam: null, ds: [], order: [], ns: {}, es: {}, dist: {}, parent: {}, disc: {}, fin: {}, visit: null};
+  const out = [];
+  return {st, out, snap(line, msg, visit = null) {
+    st.line = [].concat(line); st.msg = msg; st.visit = visit;
+    out.push(JSON.parse(JSON.stringify(st)));
+  }};
+}
+function roots(s) { return allComps ? [s, ...labels().filter(x => x !== s)] : [s]; }
+function unreachedNote(st) {
+  const miss = labels().filter(x => !st.order.includes(x));
+  return miss.length ? ` Not reachable from ${start}: ${miss.join(', ')}. Turn on “Visit every component” to cover them.` : '';
+}
+
+function genBFS(s) {
+  const r = recorder(), st = r.st, vis = {};
+  r.snap(0, `BFS from ${s}: it visits ${s}, then every node 1 edge away, then 2 edges away, and so on.`);
+  roots(s).forEach((root, i) => {
+    if (vis[root]) return;
+    if (i > 0) r.snap(0, `${root} was never reached. Start a new BFS from ${root}: this is a new component.`);
+    vis[root] = 1; st.dist[root] = 0; st.parent[root] = null; st.ds.push({n: root}); st.ns[root] = 'frontier';
+    r.snap(1, `Mark ${root} as visited and enqueue it.`);
+    while (st.ds.length) {
+      const u = st.ds.shift().n;
+      st.current = u; st.ns[u] = 'current'; st.order.push(u);
+      r.snap(3, `Dequeue ${u} from the front and visit it (#${st.order.length}). It is ${st.dist[u]} edge${st.dist[u] === 1 ? '' : 's'} from ${root}.`, u);
+      const nb = nbrs(u);
+      if (!nb.length) r.snap(4, `${u} has no ${G.directed ? 'outgoing ' : ''}neighbors.`);
+      for (const v of nb) {
+        st.exam = [u, v];
+        if (!vis[v]) {
+          vis[v] = 1; st.parent[v] = u; st.dist[v] = st.dist[u] + 1; st.ds.push({n: v}); st.ns[v] = 'frontier'; st.es[ek(u, v)] = 'tree';
+          r.snap([4, 5, 6, 7], `Check ${v}: not visited yet. Mark it, set parent[${v}] = ${u}, and enqueue it at the back (distance ${st.dist[v]}).`);
+        } else {
+          const why = st.parent[u] === v && !G.directed ? `it is ${u}’s parent` : st.ns[v] === 'frontier' ? 'it is already waiting in the queue' : 'it was already visited';
+          if (!st.es[ek(u, v)]) st.es[ek(u, v)] = 'seen';
+          r.snap([4, 5], `Check ${v}: skip it, ${why}.`);
+        }
+      }
+      st.exam = null; st.ns[u] = 'done'; st.current = null;
+      r.snap(2, `Done with ${u}. ${st.ds.length ? `Next up is ${st.ds[0].n} at the front of the queue.` : 'The queue is empty.'}`);
+    }
+  });
+  r.snap([], `BFS complete. Visit order: ${st.order.join(' → ')}.${unreachedNote(st)}`);
+  return r.out;
+}
+
+function genIter(s) {
+  const r = recorder(), st = r.st, vis = {};
+  r.snap(0, `Iterative DFS from ${s}: always continue from the node pushed most recently (top of the stack).`);
+  roots(s).forEach((root, i) => {
+    if (vis[root]) return;
+    if (i > 0) r.snap(0, `${root} was never reached. Start a new DFS from ${root}: this is a new component.`);
+    st.ds.push({n: root, from: null}); st.ns[root] = 'frontier';
+    r.snap(1, `Push ${root} onto the stack.`);
+    while (st.ds.length) {
+      const it = st.ds.pop(), u = it.n;
+      st.exam = it.from ? [it.from, u] : null;
+      if (vis[u]) { r.snap([3, 4], `Pop ${u}: it was already visited, so this entry is a leftover duplicate. Ignore it.`); continue; }
+      vis[u] = 1; st.parent[u] = it.from; if (it.from) st.es[ek(it.from, u)] = 'tree';
+      st.ns[u] = 'current'; st.current = u; st.order.push(u);
+      r.snap([3, 5], `Pop ${u} from the top and visit it (#${st.order.length})${it.from ? `. It was pushed by ${it.from}, so the tree edge is ${it.from}–${u}` : ''}.`, u);
+      const nb = nbrs(u).reverse();
+      if (!nb.length) r.snap(6, `${u} has no ${G.directed ? 'outgoing ' : ''}neighbors to push.`);
+      for (const v of nb) {
+        st.exam = [u, v];
+        if (!vis[v]) {
+          st.ds.push({n: v, from: u}); st.ns[v] = 'frontier';
+          r.snap([6, 7], `Push ${v}. Neighbors go on in reverse order so that the alphabetically first one ends up on top.`);
+        } else {
+          if (!st.es[ek(u, v)]) st.es[ek(u, v)] = 'seen';
+          r.snap([6, 7], `${v} is already visited. Don’t push it.`);
+        }
+      }
+      st.exam = null; st.ns[u] = 'done'; st.current = null;
+      r.snap(2, st.ds.length ? `Top of the stack is now ${st.ds[st.ds.length - 1].n}.` : 'The stack is empty.');
+    }
+  });
+  r.snap([], `DFS complete. Visit order: ${st.order.join(' → ')}.${unreachedNote(st)}`);
+  return r.out;
+}
+
+function genRec(s) {
+  const r = recorder(), st = r.st, color = {};
+  let time = 0;
+  function dfs(u, p, why) {
+    color[u] = 'gray'; st.disc[u] = ++time; st.parent[u] = p; st.order.push(u);
+    if (p) { st.es[ek(p, u)] = 'tree'; st.ns[p] = 'frontier'; }
+    st.ds.push({n: u}); st.ns[u] = 'current'; st.current = u; st.exam = p ? [p, u] : null;
+    r.snap(1, `${why}Call DFS(${u}): mark it visited (#${st.order.length}), discovery time d[${u}] = ${st.disc[u]}.`, u);
+    const nb = nbrs(u);
+    if (!nb.length) r.snap(2, `${u} has no ${G.directed ? 'outgoing ' : ''}neighbors.`);
+    for (const v of nb) {
+      st.exam = [u, v];
+      const k = ek(u, v);
+      if (!color[v]) {
+        dfs(v, u, `${v} is unvisited, so go deeper. `);
+        st.ns[u] = 'current'; st.current = u; st.exam = [u, v];
+        r.snap(4, `DFS(${v}) returned. Back in DFS(${u}); continue with its next neighbor.`);
+      } else if (color[v] === 'gray') {
+        if (!G.directed && st.parent[u] === v) r.snap([2, 3], `Check ${v}: it is ${u}’s parent (the edge we came in on). Skip.`);
+        else { st.es[k] = 'back'; r.snap([2, 3], `Check ${v}: it is still on the call stack, so ${u}–${v} is a back edge. The graph has a cycle.`); }
+      } else if (G.directed) {
+        const cls = st.disc[u] < st.disc[v] ? 'forward' : 'cross';
+        st.es[k] = cls;
+        r.snap([2, 3], `Check ${v}: already finished. ${cls === 'forward' ? `${v} is a descendant of ${u}, so this is a forward edge.` : `${v} is in a branch that already finished, so this is a cross edge.`}`);
+      } else {
+        r.snap([2, 3], `Check ${v}: already finished. This edge was handled from ${v}’s side.`);
+      }
+    }
+    color[u] = 'black'; st.fin[u] = ++time; st.ds.pop(); st.ns[u] = 'done'; st.current = null; st.exam = null;
+    r.snap(5, `All neighbors of ${u} are explored. Finish time f[${u}] = ${st.fin[u]}. Return${p ? ` to DFS(${p})` : ''}.`);
+  }
+  r.snap(0, `Recursive DFS from ${s}: each call explores one neighbor fully before trying the next. The call stack plays the role of the stack.`);
+  roots(s).forEach((root, i) => {
+    if (color[root]) return;
+    dfs(root, null, i > 0 ? `${root} was never reached, so start a new tree (new component). ` : '');
+  });
+  r.snap([], `DFS complete. Visit order: ${st.order.join(' → ')}.${unreachedNote(st)}`);
+  return r.out;
+}
+const GEN = {bfs: genBFS, iter: genIter, rec: genRec};
+
+const CODE = {
+  bfs: ['BFS(G, s):', '  mark s visited; Q.enqueue(s)', '  while Q is not empty:', '    u ← Q.dequeue()          ▸ visit u', '    for each neighbor v of u:', '      if v is not visited:', '        mark v visited; parent[v] ← u', '        Q.enqueue(v)'],
+  iter: ['DFS(G, s):', '  S.push(s)', '  while S is not empty:', '    u ← S.pop()', '    if u is visited: continue', '    mark u visited           ▸ visit u', '    for each neighbor v of u (reversed):', '      if v is not visited: S.push(v)'],
+  rec: ['DFS(u):', '  mark u visited; d[u] ← ++time   ▸ visit u', '  for each neighbor v of u:', '    if v is not visited:', '      parent[v] ← u; DFS(v)', '  f[u] ← ++time            ▸ u finished'],
+};
+
+/* ---------- recompute / playback ---------- */
+function graphChanged() {
+  stop(); awaiting = false;
+  G.directed = $('#directed').checked;
+  steps = G.nodes.length && node(start) ? GEN[algo](start) : [];
+  idx = 0;
+  $('#start').innerHTML = labels().map(l => `<option ${l === start ? 'selected' : ''}>${l}</option>`).join('');
+  $('#scrub').max = Math.max(0, steps.length - 1);
+  renderAnswers();
+  render();
+}
+function go(i) {
+  if (!steps.length) return;
+  awaiting = false; $('#fb').textContent = ''; $('#fb').className = 'fb';
+  idx = clamp(i, 0, steps.length - 1);
+  render();
+}
+function next() {
+  if (!steps.length || idx >= steps.length - 1) { stop(); return false; }
+  if (predict && steps[idx + 1].visit && !awaiting) {
+    awaiting = true; score.missed = false; stop();
+    $('#fb').textContent = ''; render(); return false;
+  }
+  if (awaiting) return false;
+  idx++; $('#fb').textContent = ''; render(); return true;
+}
+function checkPrediction(id) {
+  const want = steps[idx + 1].visit;
+  if (id === want) {
+    score.total++; if (!score.missed) score.first++;
+    awaiting = false; idx++;
+    $('#fb').className = 'fb ok'; $('#fb').textContent = `Correct: ${id} is visited next.`;
+  } else {
+    score.missed = true;
+    const where = algo === 'bfs' ? 'Look at the front of the queue.' : algo === 'iter' ? 'Look at the top of the stack.' : 'Which unvisited neighbor of the current node comes first? If none, where does DFS return to?';
+    $('#fb').className = 'fb no'; $('#fb').textContent = `Not ${id}. ${where}`;
+    const el = document.querySelector(`[data-node="${id}"]`);
+    if (el) { el.classList.remove('wrong'); void el.getBBox(); el.classList.add('wrong'); }
+    return;
+  }
+  render();
+}
+function speedMs() { return 1600 / Math.pow(1.45, +$('#speed').value - 1); }
+function play() {
+  if (timer) { stop(); return; }
+  if (idx >= steps.length - 1) idx = 0;
+  const tick = () => { if (next()) timer = setTimeout(tick, speedMs()); else stop(); };
+  timer = setTimeout(tick, 0);
+  $('#b-play').textContent = '❚❚ Pause';
+}
+function stop() { clearTimeout(timer); timer = null; $('#b-play').textContent = '▶ Play'; }
+
+/* ---------- rendering ---------- */
+const svg = $('#graph');
+$('#defs').innerHTML = ['idle', 'seen', 'tree', 'back', 'cross', 'forward', 'exam'].map(c =>
+  `<marker id="arr-${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path class="m-${c}" d="M0 0 L10 5 L0 10 z"/></marker>`).join('');
+
+function render() {
+  const S = steps[idx];
+  svg.classList.toggle('awaiting', awaiting);
+  svg.setAttribute('class', `mode-${mode}${awaiting ? ' awaiting' : ''}`);
+  // edges
+  let eh = '';
+  for (const e of G.edges) {
+    const a = node(e.u), b = node(e.v), key = ek(e.u, e.v);
+    let cls = S?.es[key] || 'idle';
+    const ex = S?.exam && ((S.exam[0] === e.u && S.exam[1] === e.v) || (!G.directed && S.exam[0] === e.v && S.exam[1] === e.u));
+    if (ex) cls = 'exam';
+    const twin = G.directed && G.edges.some(f => f.u === e.v && f.v === e.u);
+    const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
+    const off = twin ? 7 : 0, ox = -uy * off, oy = ux * off, end = G.directed ? R + 3 : R;
+    const x1 = a.x + ux * R + ox, y1 = a.y + uy * R + oy, x2 = b.x - ux * end + ox, y2 = b.y - uy * end + oy;
+    eh += `<g data-edge="${key}"><line class="hit" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/><line class="edge ${cls}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" ${G.directed ? `marker-end="url(#arr-${cls})"` : ''}/></g>`;
+  }
+  $('#edges').innerHTML = eh;
+  // nodes
+  let nh = '';
+  for (const n of G.nodes) {
+    const st = S?.ns[n.id] || 'idle';
+    const ord = S ? S.order.indexOf(n.id) : -1;
+    let sub = '';
+    if (S && algo === 'bfs' && S.dist[n.id] !== undefined) sub = `dist ${S.dist[n.id]}`;
+    if (S && algo === 'rec' && S.disc[n.id] !== undefined) sub = `${S.disc[n.id]}/${S.fin[n.id] ?? '–'}`;
+    nh += `<g class="node st-${st}${S?.current === n.id ? ' is-current' : ''}${n.id === start ? ' is-start' : ''}${pendingEdge === n.id ? ' pending' : ''}" data-node="${n.id}" transform="translate(${n.x},${n.y})">
+      <circle class="halo" r="${R + 8}"/><circle class="body" r="${R}"/><text class="lbl" dy="0.36em">${n.id}</text>
+      ${ord >= 0 ? `<g transform="translate(${R - 4},${-R + 4})"><circle class="badge" r="10"/><text class="badge-t" dy="0.36em">${ord + 1}</text></g>` : ''}
+      ${sub ? `<text class="sub" y="${R + 16}">${sub}</text>` : ''}</g>`;
+  }
+  if (!G.nodes.length) nh = `<text class="empty-msg" x="400" y="260">Choose “Add node” and click here to place nodes</text>`;
+  $('#nodes').innerHTML = nh;
+
+  // readouts
+  const now = $('#now');
+  now.classList.toggle('ask', awaiting);
+  $('#now-title').textContent = awaiting ? 'Your turn' : 'What’s happening';
+  $('#msg').textContent = awaiting ? 'Which node is visited next? Click it on the graph.' : S ? S.msg : 'Add some nodes and edges to start.';
+  $('#counter').textContent = steps.length ? `Step ${idx + 1} / ${steps.length}` : 'No steps';
+  $('#scrub').value = idx;
+  $('#b-prev').disabled = $('#b-reset').disabled = idx === 0;
+  $('#b-next').disabled = $('#b-end').disabled = idx >= steps.length - 1;
+  $('#score').textContent = predict ? `First-try correct: ${score.first} / ${score.total}` : '';
+
+  const dsT = {bfs: 'Queue', iter: 'Stack', rec: 'Call stack'}[algo];
+  $('#ds-title').textContent = dsT;
+  $('#lg-frontier').textContent = {bfs: 'in queue', iter: 'on stack', rec: 'waiting on call stack'}[algo];
+  $('#lg-back').hidden = $('#lg-cross').hidden = algo !== 'rec';
+  if (algo === 'rec') $('#lg-cross').hidden = !G.directed;
+  const items = S ? S.ds : [];
+  let dh = '';
+  if (!items.length) dh = `<span class="muted">empty</span>`;
+  else if (algo === 'bfs') dh = `<span class="end">front</span>` + items.map((it, i) => `<span class="chip${i === 0 ? ' hot' : ''}">${it.n}</span>`).join('') + `<span class="end">back</span>`;
+  else if (algo === 'iter') dh = `<span class="end">bottom</span>` + items.map((it, i) => `<span class="chip${S.order.includes(it.n) ? ' stale' : ''}${i === items.length - 1 ? ' hot' : ''}" title="pushed by ${it.from || '—'}">${it.n}</span>`).join('') + `<span class="end">top</span>`;
+  else dh = `<span class="end">bottom</span>` + items.map((it, i) => `<span class="chip call${i === items.length - 1 ? ' hot' : ''}">DFS(${it.n})</span>`).join('') + `<span class="end">top</span>`;
+  $('#ds').innerHTML = dh;
+  $('#order').innerHTML = S && S.order.length ? S.order.map((n, i) => `<span class="chip ord">${n}<small>${i + 1}</small></span>`).join('') : `<span class="muted">nothing visited yet</span>`;
+  $('#code').innerHTML = CODE[algo].map((l, i) => `<div class="${S && S.line.includes(i) ? 'on' : ''}">${l.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</div>`).join('');
+
+  // table
+  const L = labels();
+  const cols = algo === 'bfs' ? ['node', 'dist', 'parent'] : algo === 'iter' ? ['node', 'order', 'parent'] : ['node', 'd', 'f', 'parent'];
+  $('#tbl-title').textContent = algo === 'bfs' ? 'Distance & parent' : algo === 'iter' ? 'Order & parent' : 'Discovery / finish';
+  const val = (n, c) => {
+    if (!S) return '·';
+    if (c === 'node') return n;
+    if (c === 'dist') return S.dist[n] ?? '∞';
+    if (c === 'parent') return n in S.parent ? (S.parent[n] ?? '—') : '·';
+    if (c === 'order') { const o = S.order.indexOf(n); return o < 0 ? '·' : o + 1; }
+    if (c === 'd') return S.disc[n] ?? '·';
+    if (c === 'f') return S.fin[n] ?? '·';
+  };
+  $('#tbl').innerHTML = `<tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>` + L.map(n => `<tr class="${S?.current === n ? 'cur' : ''}">${cols.map(c => `<td>${val(n, c)}</td>`).join('')}</tr>`).join('');
+
+  // adjacency list
+  $('#adj').innerHTML = L.length ? L.map(n => {
+    const isU = S?.exam && S.exam[0] === n;
+    return `<div class="row${S?.current === n ? ' cur' : ''}"><b>${n}</b>→ ${nbrs(n).map(v => `<span class="${isU && S.exam[1] === v ? 'on' : ''}">${v}</span>`).join(', ') || '∅'}</div>`;
+  }).join('') : '<span class="muted">no nodes</span>';
+
+  const hints = {move: 'Drag nodes to rearrange. Click a node to make it the start.', node: 'Click empty space to add a node.', edge: pendingEdge ? `Now click the node to connect ${pendingEdge} to.` : 'Click one node, then another, to connect them.', delete: 'Click a node or an edge to remove it.'};
+  $('#hint').textContent = awaiting ? 'Click the node you predict.' : hints[mode];
+}
+
+function renderAnswers() {
+  if (!G.nodes.length || !node(start)) { $('#ans').innerHTML = '<span class="muted">No graph yet.</span>'; return; }
+  const last = k => GEN[k](start).at(-1).order.join(' → ');
+  $('#ans').innerHTML = `<div><b>BFS:</b> ${last('bfs')}</div><div><b>DFS (stack):</b> ${last('iter')}</div><div><b>DFS (recursive):</b> ${last('rec')}</div><span class="muted">Neighbors are taken in alphabetical order.</span>`;
+}
+let hintTimer;
+function flashHint(t) { $('#hint').textContent = t; clearTimeout(hintTimer); hintTimer = setTimeout(render, 1800); }
+
+/* ---------- pointer interaction ---------- */
+function pt(e) {
+  const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+svg.addEventListener('pointerdown', e => {
+  const p = pt(e);
+  const nEl = e.target.closest('[data-node]'), eEl = e.target.closest('[data-edge]');
+  if (awaiting) { if (nEl) checkPrediction(nEl.dataset.node); return; }
+  if (nEl) {
+    const id = nEl.dataset.node;
+    if (mode === 'delete') { removeNode(id); return; }
+    if (mode === 'edge') {
+      if (!pendingEdge) { pendingEdge = id; render(); }
+      else { const a = pendingEdge; pendingEdge = null; $('#rubber').setAttribute('visibility', 'hidden'); addEdge(a, id); }
+      return;
+    }
+    const n = node(id);
+    drag = {id, ox: p.x - n.x, oy: p.y - n.y, sx: p.x, sy: p.y, moved: false};
+    svg.setPointerCapture(e.pointerId);
+    return;
+  }
+  if (eEl && mode === 'delete') { removeEdge(eEl.dataset.edge); return; }
+  if (mode === 'node') { addNode(p.x, p.y); return; }
+  if (mode === 'edge' && pendingEdge) { pendingEdge = null; $('#rubber').setAttribute('visibility', 'hidden'); render(); }
+});
+svg.addEventListener('pointermove', e => {
+  const p = pt(e);
+  if (drag) {
+    if (Math.hypot(p.x - drag.sx, p.y - drag.sy) > 4) drag.moved = true;
+    if (drag.moved) { const n = node(drag.id); n.x = clamp(p.x - drag.ox, R + 4, W - R - 4); n.y = clamp(p.y - drag.oy, R + 12, H - R - 20); render(); }
+  } else if (mode === 'edge' && pendingEdge) {
+    const a = node(pendingEdge), r = $('#rubber');
+    r.setAttribute('x1', a.x); r.setAttribute('y1', a.y); r.setAttribute('x2', p.x); r.setAttribute('y2', p.y); r.setAttribute('visibility', 'visible');
+  }
+});
+svg.addEventListener('pointerup', () => {
+  if (drag && !drag.moved && mode === 'move' && drag.id !== start) { start = drag.id; graphChanged(); }
+  drag = null;
+});
+
+/* ---------- controls ---------- */
+function bindSeg(sel, fn) {
+  $(sel).addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    $(sel).querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    fn(b.dataset.v);
+  });
+}
+bindSeg('#algo', v => { algo = v; graphChanged(); });
+bindSeg('#mode', v => { mode = v; pendingEdge = null; $('#rubber').setAttribute('visibility', 'hidden'); render(); });
+$('#preset').innerHTML = Object.entries(PRESETS).map(([k, p]) => `<option value="${k}">${p.name}${p.directed ? ' (directed)' : ''}</option>`).join('');
+$('#preset').addEventListener('change', e => loadPreset(e.target.value));
+$('#start').addEventListener('change', e => { start = e.target.value; graphChanged(); });
+$('#directed').addEventListener('change', graphChanged);
+$('#allc').addEventListener('change', e => { allComps = e.target.checked; graphChanged(); });
+$('#clear').addEventListener('click', () => { G.nodes = []; G.edges = []; $('#preset').value = 'empty'; mode = 'node';
+  $('#mode').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x.dataset.v === 'node')); graphChanged(); });
+$('#b-reset').addEventListener('click', () => { stop(); go(0); });
+$('#b-prev').addEventListener('click', () => { stop(); go(idx - 1); });
+$('#b-next').addEventListener('click', () => { stop(); next(); });
+$('#b-end').addEventListener('click', () => { stop(); go(steps.length - 1); });
+$('#b-play').addEventListener('click', play);
+$('#scrub').addEventListener('input', e => { stop(); go(+e.target.value); });
+$('#predict').addEventListener('change', e => { predict = e.target.checked; score = {first: 0, total: 0, missed: false}; awaiting = false; render(); });
+document.addEventListener('keydown', e => {
+  if (e.target.closest('select, input[type=range]')) return;
+  if (e.key === 'ArrowRight') { e.preventDefault(); stop(); next(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); stop(); go(idx - 1); }
+  else if (e.key === 'Home') { stop(); go(0); }
+  else if (e.key === 'End') { stop(); go(steps.length - 1); }
+  else if (e.key === ' ' && !e.target.closest('button')) { e.preventDefault(); play(); }
+});
+
+loadPreset('campus');
+</script>
+</body>
+</html>
