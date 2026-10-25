@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Minimum Spanning Trees · Data Structures Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: lab bench — the graph sits on graph paper at left, instrument readouts (queue/stack, code, tables) stack at right */
+:root{
+  --paper:#f2f5f9; --panel:#ffffff; --ink:#152038; --muted:#5a6781; --line:#d6deea; --grid:#e2e8f1;
+  --accent:#2b56e0; --accent-soft:#e3eaff;
+  --frontier:#efb128; --current:#e2437a; --done:#14998a; --cross:#7b61e8;
+  --on-warm:#271c00; --on-strong:#ffffff; --node:#ffffff;
+  --display:'Bricolage Grotesque','Avenir Next',system-ui,sans-serif;
+  --body:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0e1320; --panel:#151c2c; --ink:#e4e9f4; --muted:#95a2bc; --line:#2a344c; --grid:#192135;
+  --accent:#86a2ff; --accent-soft:#1f2a4a;
+  --frontier:#f4c34e; --current:#ff6e9c; --done:#35c2ae; --cross:#a490ff;
+  --on-warm:#271c00; --on-strong:#0e1320; --node:#1b2336; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --paper:#0e1320; --panel:#151c2c; --ink:#e4e9f4; --muted:#95a2bc; --line:#2a344c; --grid:#192135;
+  --accent:#86a2ff; --accent-soft:#1f2a4a;
+  --frontier:#f4c34e; --current:#ff6e9c; --done:#35c2ae; --cross:#a490ff;
+  --on-warm:#271c00; --on-strong:#0e1320; --node:#1b2336; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* header + topic nav */
+header{display:flex;flex-direction:column;gap:12px}
+.brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.brand h1{font-size:clamp(24px,3.4vw,34px);font-weight:800}
+.brand p{margin:0;color:var(--muted)}
+.topics{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.topic{flex:none;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 14px;cursor:pointer;display:flex;gap:8px;align-items:center;white-space:nowrap}
+.topic[aria-current="page"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.topic[disabled]{cursor:default;color:var(--muted);background:transparent}
+.tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:1px 7px;border-radius:999px;border:1px solid currentColor;opacity:.85}
+.topic[aria-current="page"] .tag{background:var(--frontier);color:var(--on-warm);border-color:var(--frontier);opacity:1}
+
+.lead{display:flex;flex-direction:column;gap:4px}
+.lead h2{font-size:clamp(22px,2.6vw,28px);font-weight:800}
+.lead p{margin:0;color:var(--muted);max-width:72ch}
+
+/* main grid */
+.lab{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:980px){.lab{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+
+/* controls */
+.controls{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 11px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--panel)}
+select{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.check{display:flex;gap:6px;align-items:center;cursor:pointer;user-select:none}
+.check input{accent-color:var(--accent);width:16px;height:16px}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 12px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--panel);border-color:var(--accent);font-weight:600;min-width:84px}
+.btn:disabled{opacity:.4;cursor:default}
+
+/* canvas */
+.stage{padding:0;overflow:hidden}
+.stage-top{display:flex;flex-wrap:wrap;gap:10px 16px;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
+.hint{color:var(--muted);font-size:13px}
+#graph{display:block;width:100%;height:auto;aspect-ratio:800/520;max-width:100%;touch-action:none;
+  background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:20px 20px}
+#graph.mode-node{cursor:copy}
+#graph.mode-edge{cursor:crosshair}
+#graph.mode-delete{cursor:not-allowed}
+.node{cursor:grab}
+.node .body{fill:var(--node);stroke:var(--ink);stroke-width:2;transition:fill .2s}
+.node .lbl{font-family:var(--display);font-weight:800;font-size:17px;text-anchor:middle;fill:var(--ink);pointer-events:none}
+.node .sub{font-family:var(--mono);font-size:12px;text-anchor:middle;fill:var(--muted);pointer-events:none}
+.node .halo{fill:none;stroke:var(--ink);stroke-width:1.5;stroke-dasharray:3 4;opacity:0}
+.node.is-start .halo{opacity:.8}
+.node.st-frontier .body{fill:var(--frontier);stroke:var(--frontier)}
+.node.st-frontier .lbl{fill:var(--on-warm)}
+.node.st-current .body{fill:var(--current);stroke:var(--current)}
+.node.st-current .lbl{fill:var(--on-strong)}
+.node.st-done .body{fill:var(--done);stroke:var(--done)}
+.node.st-done .lbl{fill:var(--on-strong)}
+.node.is-current .body{stroke:var(--ink);stroke-width:3.5}
+.node.pending .body{stroke:var(--accent);stroke-width:4}
+.node.wrong .body{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.badge{fill:var(--ink)}
+.badge-t{fill:var(--paper);font-family:var(--mono);font-size:11px;font-weight:600;text-anchor:middle;pointer-events:none}
+.awaiting .node{cursor:pointer}
+.awaiting .node:hover .body{stroke:var(--accent);stroke-width:4}
+
+.edge{stroke:var(--muted);stroke-width:2.5;opacity:.6;fill:none}
+.edge.tree{stroke:var(--done);stroke-width:5;opacity:1}
+.edge.seen{stroke-dasharray:4 6;opacity:.45}
+.edge.back{stroke:var(--current);stroke-width:3;stroke-dasharray:9 6;opacity:1}
+.edge.forward,.edge.cross{stroke:var(--cross);stroke-width:3;stroke-dasharray:2 6;stroke-linecap:round;opacity:1}
+.edge.exam{stroke:var(--accent);stroke-width:6;opacity:1;stroke-dasharray:none}
+.hit{stroke:transparent;stroke-width:16;fill:none}
+.mode-delete .hit{cursor:not-allowed}
+.rubber{stroke:var(--accent);stroke-width:2;stroke-dasharray:5 5;pointer-events:none}
+.m-idle,.m-seen{fill:var(--muted)} .m-tree{fill:var(--done)} .m-back{fill:var(--current)} .m-cross,.m-forward{fill:var(--cross)} .m-exam{fill:var(--accent)}
+.empty-msg{font-family:var(--display);font-size:20px;fill:var(--muted);text-anchor:middle}
+
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;padding:10px 14px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:13px;height:13px;border-radius:50%;border:2px solid var(--ink);background:var(--node);display:inline-block}
+.dot.f{background:var(--frontier);border-color:var(--frontier)} .dot.c{background:var(--current);border-color:var(--current)} .dot.d{background:var(--done);border-color:var(--done)}
+.ln{width:22px;height:0;border-top:4px solid var(--done);display:inline-block}
+.ln.b{border-top:3px dashed var(--current)} .ln.x{border-top:3px dotted var(--cross)} .ln.e{border-top:4px solid var(--accent)}
+
+/* playback */
+.play{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.play .grp{display:flex;gap:6px;flex-wrap:wrap}
+.counter{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+input[type=range]{accent-color:var(--accent);width:110px}
+.scrub{flex:1 1 100%;width:100%}
+.predict-bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:14px}
+.score{font-family:var(--mono);font-size:13px;color:var(--muted)}
+
+/* readouts */
+.now{border-left:4px solid var(--accent)}
+.now p{margin:0;font-size:16px;min-height:3em}
+.now.ask{border-left-color:var(--current)}
+.now .fb{margin-top:6px;font-size:14px;font-weight:600;min-height:0}
+.fb.ok{color:var(--done)} .fb.no{color:var(--current)}
+.ds{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:44px;font-family:var(--mono)}
+.ds .end{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.chip{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:34px;padding:0 8px;border-radius:6px;border:2px solid var(--frontier);background:var(--frontier);color:var(--on-warm);font-weight:600;font-family:var(--mono)}
+.chip.hot{border-color:var(--ink);box-shadow:0 0 0 2px var(--panel) inset}
+.chip.stale{background:transparent;color:var(--muted);border-color:var(--line);text-decoration:line-through}
+.chip.call{background:var(--accent-soft);border-color:var(--accent);color:var(--ink);font-size:13px}
+.chip.call.hot{background:var(--current);border-color:var(--current);color:var(--on-strong)}
+.chip.ord{background:var(--done);border-color:var(--done);color:var(--on-strong);position:relative}
+.chip.ord small{position:absolute;top:-8px;right:-6px;background:var(--ink);color:var(--paper);font-size:10px;border-radius:999px;padding:0 4px;line-height:15px}
+.muted{color:var(--muted);font-size:13px}
+.code{font-family:var(--mono);font-size:13px;line-height:1.75;margin:0;overflow-x:auto;white-space:pre;counter-reset:ln}
+.code div{padding:0 8px;border-radius:4px}
+.code div::before{counter-increment:ln;content:counter(ln);display:inline-block;width:1.6em;color:var(--muted);opacity:.6}
+.code div.on{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+tr.cur td{background:var(--accent-soft)}
+.adj{font-family:var(--mono);font-size:13px;display:flex;flex-direction:column;gap:2px}
+.adj b{display:inline-block;width:1.6em}
+.adj .on{color:var(--accent);font-weight:600;text-decoration:underline}
+.adj .row.cur{background:var(--accent-soft);border-radius:4px}
+details summary{cursor:pointer;font-weight:600}
+details .ans{font-family:var(--mono);font-size:13px;margin-top:8px;display:flex;flex-direction:column;gap:4px}
+.tasks{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:8px;max-width:75ch}
+.tasks li::marker{font-family:var(--mono);color:var(--muted)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+@media (max-width:560px){.two{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+[hidden]{display:none!important}
+/* topic nav links */
+a.topic{text-decoration:none;color:inherit}
+.tag.now{background:var(--frontier);color:var(--on-warm);border-color:var(--frontier);opacity:1}
+
+/* MST page */
+.stage{position:relative}
+#wedit{position:absolute;transform:translate(-50%,-50%);width:72px;padding:4px 6px;font-family:var(--mono);font-size:15px;text-align:center;border:2px solid var(--accent);border-radius:6px;background:var(--panel);color:var(--ink);z-index:2}
+.wl{cursor:pointer}
+.wl rect{fill:var(--panel);stroke:var(--line);stroke-width:1.5}
+.wl text{font-family:var(--mono);font-size:16px;font-weight:600;text-anchor:middle;fill:var(--ink);pointer-events:none}
+.wl.tree rect{fill:var(--done);stroke:var(--done)} .wl.tree text{fill:var(--on-strong)}
+.wl.cand rect{fill:var(--frontier);stroke:var(--frontier)} .wl.cand text{fill:var(--on-warm)}
+.wl.exam rect{fill:var(--accent);stroke:var(--accent)} .wl.exam text{fill:var(--panel)}
+.wl.reject rect{stroke:var(--current)} .wl.reject text{fill:var(--current)}
+.wl.seen text{fill:var(--muted)}
+.wl.editing rect{stroke:var(--accent);stroke-width:3}
+.awaiting .wl:hover rect,.mode-weight .wl:hover rect{stroke:var(--accent);stroke-width:3}
+.edge.cand{stroke:var(--frontier);stroke-width:5;opacity:1}
+.edge.reject{stroke:var(--current);stroke-width:2.5;stroke-dasharray:3 7;stroke-linecap:round;opacity:.9}
+.awaiting [data-edge]{cursor:pointer}
+.ln.k{border-top:4px solid var(--frontier)} .ln.r{border-top:3px dotted var(--current)}
+.tree-sum{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+.total{font-family:var(--display);font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.elist{position:relative;display:flex;flex-direction:column;gap:2px;max-height:290px;overflow:auto;font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+.erow{display:grid;grid-template-columns:4em 2.5em minmax(0,1fr);gap:8px;padding:3px 8px;border-radius:4px}
+.erow .es{color:var(--muted)}
+.erow.cur{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.erow.tree .es{color:var(--done);font-weight:600}
+.erow.reject .es{color:var(--current)}
+.erow.reject .ek,.erow.reject .ew{text-decoration:line-through;color:var(--muted)}
+.erow.unused{opacity:.45}
+.sets{display:flex;flex-wrap:wrap;gap:6px;font-family:var(--mono);font-size:13px}
+.set{padding:4px 10px;border:1px solid var(--line);border-radius:999px}
+.set.hot{border-color:var(--accent);background:var(--accent-soft)}
+.chip em{font-style:normal;font-size:11px;margin-left:6px;opacity:.85}
+.chip.inf{background:transparent;border-color:var(--line);color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1><a href="./" style="color:inherit;text-decoration:none">Data Structures Lab</a></h1>
+      <p>Build a case, run the algorithm one step at a time, and watch the data structures change.</p>
+    </div>
+    <nav class="topics" id="topics" aria-label="Topics"></nav>
+  </header>
+
+  <section data-topic="mst" class="col" style="gap:18px">
+    <div class="lead">
+      <h2>Minimum Spanning Trees: Kruskal and Prim</h2>
+      <p>A minimum spanning tree connects every vertex of a weighted, undirected graph using the smallest possible total edge weight. <strong>Kruskal</strong> grows a forest by taking the lightest edge that doesn’t form a cycle, using <strong>disjoint sets</strong>. <strong>Prim</strong> grows one tree from a start vertex, always adding the cheapest edge leaving it, using a <strong>priority queue</strong>.</p>
+    </div>
+
+    <div class="panel controls">
+      <div class="field">
+        <span class="label">Algorithm</span>
+        <div class="seg" id="algo">
+          <button type="button" data-v="kruskal" aria-pressed="true">Kruskal</button>
+          <button type="button" data-v="prim">Prim</button>
+        </div>
+      </div>
+      <div class="field" id="start-field" hidden>
+        <label class="label" for="start">Start vertex</label>
+        <select id="start"></select>
+      </div>
+      <div class="field">
+        <label class="label" for="preset">Example graph</label>
+        <select id="preset"></select>
+      </div>
+      <div class="field">
+        <span class="label">Weights</span>
+        <button type="button" class="btn" id="randw">Randomize weights</button>
+      </div>
+    </div>
+
+    <div class="lab">
+      <div class="col">
+        <div class="panel stage">
+          <div class="stage-top">
+            <div class="seg" id="mode" aria-label="Edit mode">
+              <button type="button" data-v="move" aria-pressed="true">Move</button>
+              <button type="button" data-v="node">Add node</button>
+              <button type="button" data-v="edge">Add edge</button>
+              <button type="button" data-v="weight">Edit weight</button>
+              <button type="button" data-v="delete">Delete</button>
+            </div>
+            <span class="hint" id="hint"></span>
+            <button type="button" class="btn" id="clear">Clear graph</button>
+          </div>
+          <svg id="graph" viewBox="0 0 800 520" role="img" aria-label="Weighted graph canvas">
+            <g id="edges"></g>
+            <line id="rubber" class="rubber" x1="0" y1="0" x2="0" y2="0" visibility="hidden"></line>
+            <g id="wlabels"></g>
+            <g id="nodes"></g>
+          </svg>
+          <input id="wedit" type="number" min="0" max="99" step="1" aria-label="Edge weight" hidden>
+          <div class="legend">
+            <span><i class="dot"></i>not in tree</span>
+            <span id="lg-q"><i class="dot f"></i>in queue, key known</span>
+            <span><i class="dot c"></i>current</span>
+            <span><i class="dot d"></i>in tree</span>
+            <span><i class="ln e"></i>edge being checked</span>
+            <span><i class="ln"></i>tree edge</span>
+            <span id="lg-cand"><i class="ln k"></i>best edge so far (parent)</span>
+            <span id="lg-rej"><i class="ln r"></i>skipped, makes a cycle</span>
+          </div>
+        </div>
+
+        <div class="panel play">
+          <div class="grp">
+            <button type="button" class="btn" id="b-reset" title="Back to step 1 (Home)">⏮ Reset</button>
+            <button type="button" class="btn" id="b-prev" title="Previous step (←)">◀ Back</button>
+            <button type="button" class="btn primary" id="b-play" title="Play / pause (Space)">▶ Play</button>
+            <button type="button" class="btn" id="b-next" title="Next step (→)">Next ▶</button>
+            <button type="button" class="btn" id="b-end" title="Jump to the result (End)">Result ⏭</button>
+          </div>
+          <label class="check" for="speed">Speed <input type="range" id="speed" min="1" max="10" value="5"></label>
+          <span class="counter" id="counter"></span>
+          <input type="range" class="scrub" id="scrub" min="0" max="0" value="0" aria-label="Scrub through steps">
+          <div class="predict-bar">
+            <label class="check"><input type="checkbox" id="predict"> Predict mode</label>
+            <span class="muted" id="predict-note"></span>
+            <span class="score" id="score"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="panel now" id="now">
+          <h3 class="label" id="now-title">What’s happening</h3>
+          <p id="msg"></p>
+          <p class="fb" id="fb"></p>
+        </div>
+        <div class="panel">
+          <h3 class="label" id="tree-title">Tree edges</h3>
+          <div class="tree-sum"><span class="total" id="total">0</span><span class="muted">total weight</span></div>
+          <div class="ds" id="tree"></div>
+        </div>
+        <div class="panel">
+          <h3 class="label" id="ds-title">Edges sorted by weight</h3>
+          <div id="ds"></div>
+        </div>
+        <div class="panel">
+          <h3 class="label" id="aux-title">Disjoint sets</h3>
+          <div id="aux"></div>
+        </div>
+        <div class="panel">
+          <h3 class="label">Pseudocode</h3>
+          <div class="code" id="code"></div>
+        </div>
+        <div class="panel">
+          <details>
+            <summary>Answer key for this graph</summary>
+            <div class="ans" id="ans"></div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ---------- topic nav (shared across pages) ---------- */
+const TOPICS = [
+  {id:'graphs', name:'Graph Traversal', href:'graph-traversal.html'},
+  {id:'mst', name:'Minimum Spanning Trees', href:'mst.html'},
+  {id:'paths', name:'Shortest Paths'},
+  {id:'dp', name:'Dynamic Programming'},
+  {id:'greedy', name:'Greedy Algorithms'},
+];
+const THIS_WEEK = 'mst', PAGE = 'mst';
+document.getElementById('topics').innerHTML = TOPICS.map(t => {
+  const tag = `<span class="tag${t.id === THIS_WEEK ? ' now' : ''}">${t.id === THIS_WEEK ? 'This week' : t.href ? 'Open' : 'Soon'}</span>`;
+  return t.href
+    ? `<a class="topic" href="${t.href}"${t.id === PAGE ? ' aria-current="page"' : ''}>${t.name}${tag}</a>`
+    : `<button type="button" class="topic" disabled>${t.name}${tag}</button>`;
+}).join('');
+
+/* ---------- graph model ---------- */
+const $ = s => document.querySelector(s);
+const R = 22, W = 800, H = 520;
+let G = {nodes: [], edges: []};
+let algo = 'kruskal', start = 'A', mode = 'move';
+let steps = [], idx = 0, timer = null;
+let pendingEdge = null, drag = null, editing = null;
+let predict = false, awaiting = false, score = {first: 0, total: 0, missed: false};
+
+const PRESETS = {
+  textbook: {name: 'Textbook (9 vertices)',
+    nodes: {A:[70,260], B:[200,110], C:[400,110], D:[600,110], E:[730,260], F:[600,410], G:[400,410], H:[200,410], I:[320,260]},
+    edges: 'AB4 AH8 BC8 BH11 CD7 CF4 CI2 DE9 DF14 EF10 FG2 GH1 GI6 HI7'},
+  campus: {name: 'Campus network',
+    nodes: {A:[110,120], B:[330,80], C:[560,110], D:[720,260], E:[540,420], F:[290,430], G:[390,260]},
+    edges: 'AB7 AF9 AG5 BC8 BG4 CD6 CG3 DE5 EG7 EF6 FG8'},
+  ties: {name: 'Equal weights (ties)',
+    nodes: {A:[200,110], B:[600,110], C:[600,410], D:[200,410], E:[400,260]},
+    edges: 'AB2 BC2 CD2 AD2 AE1 BE1 CE3 DE3'},
+  grid: {name: 'Grid 3×3',
+    nodes: {A:[200,100], B:[400,100], C:[600,100], D:[200,260], E:[400,260], F:[600,260], G:[200,420], H:[400,420], I:[600,420]},
+    edges: 'AB4 BC2 DE6 EF1 GH3 HI5 AD3 BE5 CF7 DG2 EH4 FI6'},
+  islands: {name: 'Two islands',
+    nodes: {A:[120,140], B:[310,90], C:[250,330], D:[480,120], E:[690,150], F:[520,390], G:[700,400]},
+    edges: 'AB3 AC5 BC4 DE2 DF6 EF5 EG7 FG3'},
+  empty: {name: 'Empty (draw your own)', nodes: {}, edges: ''},
+};
+
+function loadPreset(key) {
+  const p = PRESETS[key];
+  G = {nodes: Object.entries(p.nodes).map(([id, [x, y]]) => ({id, x, y})),
+       edges: p.edges.split(' ').filter(Boolean).map(s => ({u: s[0], v: s[1], w: +s.slice(2)}))};
+  start = G.nodes[0]?.id || 'A';
+  graphChanged();
+}
+
+const node = id => G.nodes.find(n => n.id === id);
+const ek = (u, v) => u < v ? u + '–' + v : v + '–' + u;
+const edgeByKey = k => G.edges.find(e => ek(e.u, e.v) === k);
+const labels = () => G.nodes.map(n => n.id).sort();
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+function nbrs(u) {
+  const out = [];
+  for (const e of G.edges) {
+    if (e.u === u) out.push({v: e.v, w: e.w});
+    else if (e.v === u) out.push({v: e.u, w: e.w});
+  }
+  return out.sort((a, b) => a.v < b.v ? -1 : 1);
+}
+function addNode(x, y) {
+  const id = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').find(c => !node(c));
+  if (!id) { flashHint('26 nodes is the limit.'); return; }
+  G.nodes.push({id, x: clamp(x, R + 4, W - R - 4), y: clamp(y, R + 4, H - R - 4)});
+  if (!node(start)) start = id;
+  graphChanged();
+}
+function addEdge(u, v) {
+  if (u === v) { flashHint('Self-loops are not allowed here.'); return; }
+  if (edgeByKey(ek(u, v))) { flashHint('That edge already exists.'); return; }
+  G.edges.push({u, v, w: rnd(1, 9)});
+  graphChanged();
+  setTimeout(() => openEditor(ek(u, v)), 0);
+}
+function removeNode(id) {
+  G.nodes = G.nodes.filter(n => n.id !== id);
+  G.edges = G.edges.filter(e => e.u !== id && e.v !== id);
+  if (start === id) start = labels()[0] || 'A';
+  graphChanged();
+}
+function removeEdge(k) { G.edges = G.edges.filter(e => ek(e.u, e.v) !== k); graphChanged(); }
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* ---------- step recording ---------- */
+function recorder(extra) {
+  const st = Object.assign({line: [], msg: '', exam: null, cur: null, ns: {}, es: {}, tree: [], total: 0, pick: null}, extra);
+  const out = [];
+  return {st, out, snap(line, msg, pick = null) {
+    st.line = [].concat(line); st.msg = msg; st.pick = pick;
+    out.push(JSON.parse(JSON.stringify(st)));
+  }};
+}
+// Kruskal asks right after the previous edge was added, before the next candidate edges are checked.
+// Prim asks right before each extraction, once the keys it depends on are up to date.
+function attachAsks(out, firstAsk, atReveal = false) {
+  let prev = firstAsk - 1;
+  out.forEach((s, j) => { if (s.pick) { if (!s.pick.noAsk) out[atReveal ? j : prev + 1].ask = s.pick; prev = j; } });
+  return out;
+}
+
+function genKruskal() {
+  const L = labels(), n = L.length;
+  const r = recorder({sorted: [], sets: [], cursor: -1}), st = r.st;
+  const par = {}; L.forEach(x => par[x] = x);
+  const find = x => par[x] === x ? x : find(par[x]);
+  const sets = () => { const g = {}; L.forEach(x => (g[find(x)] ||= []).push(x)); return Object.values(g).sort((a, b) => a[0] < b[0] ? -1 : 1); };
+  st.sets = sets();
+  r.snap(1, `Start with no tree edges. Each of the ${n} vertices is in a set of its own.`);
+  st.sorted = G.edges.map(e => ({k: ek(e.u, e.v), u: e.u < e.v ? e.u : e.v, v: e.u < e.v ? e.v : e.u, w: e.w, s: ''}))
+    .sort((a, b) => a.w - b.w || (a.k < b.k ? -1 : a.k > b.k ? 1 : 0));
+  r.snap(2, `Sort all ${st.sorted.length} edges by weight, lightest first. Equal weights are taken in alphabetical order.`);
+  for (let i = 0; i < st.sorted.length; i++) {
+    if (n > 1 && st.tree.length === n - 1) {
+      for (let j = i; j < st.sorted.length; j++) st.sorted[j].s = 'unused';
+      st.cursor = -1; st.exam = null;
+      r.snap(7, `The tree already has ${n - 1} edges (V − 1), so it connects every vertex. Stop early: the remaining edges are never needed.`);
+      break;
+    }
+    const e = st.sorted[i]; st.cursor = i; st.exam = e.k;
+    const ru = find(e.u), rv = find(e.v);
+    if (ru !== rv) {
+      e.s = 'check';
+      r.snap([3, 4], `Next lightest edge: ${e.k} (weight ${e.w}). ${e.u} and ${e.v} are in different sets, so adding it can’t create a cycle.`);
+      par[rv] = ru;
+      e.s = 'tree'; st.es[e.k] = 'tree'; st.tree.push(e.k); st.total += e.w; st.ns[e.u] = st.ns[e.v] = 'done'; st.sets = sets();
+      r.snap(5, `Add ${e.k} to the tree and merge the two sets. Tree: ${st.tree.length} of ${Math.max(n - 1, 0)} edges, total weight ${st.total}.`, {type: 'edge', val: e.k});
+    } else {
+      e.s = 'reject'; st.es[e.k] = 'reject';
+      r.snap([3, 4, 6], `Next lightest edge: ${e.k} (weight ${e.w}). ${e.u} and ${e.v} are already in the same set, so this edge would close a cycle. Skip it.`);
+    }
+  }
+  st.cursor = -1; st.exam = null;
+  const k = st.sets.length;
+  r.snap(7, `Kruskal is done. Minimum spanning ${k > 1 ? 'forest' : 'tree'} weight: ${st.total}.${k > 1 ? ` The graph is disconnected, so the result is ${k} separate trees (a spanning forest).` : ''}`);
+  return attachAsks(r.out, 2);
+}
+
+function genPrim(s) {
+  const L = labels();
+  const r = recorder({key: {}, par: {}, inQ: {}, pq: []}), st = r.st;
+  L.forEach(x => { st.key[x] = null; st.par[x] = null; st.inQ[x] = true; });
+  const K = x => st.key[x] === null ? Infinity : st.key[x];
+  const pq = () => L.filter(x => st.inQ[x]).sort((a, b) => (K(a) - K(b)) || (a < b ? -1 : 1)).map(x => ({n: x, k: st.key[x]}));
+  st.pq = pq();
+  r.snap(1, `Every vertex starts in the priority queue Q with key ∞. key[v] means “the cheapest edge found so far that connects v to the tree”.`);
+  st.key[s] = 0; st.ns[s] = 'frontier'; st.pq = pq();
+  r.snap(2, `Set key[${s}] = 0 so ${s} is extracted first and becomes the root.`);
+  while (L.some(x => st.inQ[x])) {
+    const u = pq()[0].n, ku = st.key[u];
+    st.inQ[u] = false; st.ns[u] = 'current'; st.cur = u; st.exam = null;
+    let msg, noAsk = false;
+    if (ku === null) {
+      msg = `Every vertex left in Q has key ∞, so none of them can be connected to the tree. Extract ${u} anyway: it starts a new tree.`;
+    } else if (st.par[u]) {
+      const k = ek(st.par[u], u);
+      st.es[k] = 'tree'; st.tree.push(k); st.total += ku; st.exam = k;
+      msg = `Extract ${u}, the vertex in Q with the smallest key (${ku}). Its parent is ${st.par[u]}, so edge ${k} joins the tree. Total weight ${st.total}.`;
+    } else {
+      msg = `Extract ${u} (key 0). It is the root of the tree.`; noAsk = true;
+    }
+    st.pq = pq();
+    r.snap(4, msg, {type: 'node', val: u, noAsk});
+    for (const {v, w} of nbrs(u)) {
+      const k = ek(u, v); st.exam = k;
+      if (!st.inQ[v]) { r.snap([5, 6], `Check ${v}: it is already in the tree. Skip.`); continue; }
+      const old = st.key[v];
+      if (old === null || w < old) {
+        if (st.par[v]) st.es[ek(st.par[v], v)] = 'seen';
+        st.par[v] = u; st.key[v] = w; st.es[k] = 'cand'; st.ns[v] = 'frontier'; st.pq = pq();
+        r.snap([5, 6, 7], `Check ${v}: edge ${k} has weight ${w}, less than key[${v}] = ${old === null ? '∞' : old}. Update key[${v}] = ${w} and parent[${v}] = ${u}.`);
+      } else {
+        if (!st.es[k]) st.es[k] = 'seen';
+        r.snap([5, 6], `Check ${v}: edge ${k} has weight ${w}, not less than key[${v}] = ${old}. No change.`);
+      }
+    }
+    st.exam = null; st.ns[u] = 'done'; st.cur = null;
+    const rest = pq();
+    r.snap(3, rest.length ? `Done with ${u}. The smallest key in Q now belongs to ${rest[0].n} (${rest[0].k === null ? '∞' : rest[0].k}).` : `Done with ${u}. Q is empty.`);
+  }
+  const trees = L.filter(x => st.par[x] === null).length;
+  r.snap(3, `Prim is done. Minimum spanning ${trees > 1 ? 'forest' : 'tree'} weight: ${st.total}.${trees > 1 ? ` The graph is disconnected, so the result is ${trees} separate trees.` : ''}`);
+  return attachAsks(r.out, 2, true);
+}
+const generate = a => a === 'kruskal' ? genKruskal() : genPrim(start);
+
+const CODE = {
+  kruskal: ['MST-KRUSKAL(G, w):', '  A ← ∅; for each vertex v: MAKE-SET(v)', '  sort the edges by weight, increasing', '  for each edge (u, v) in sorted order:', '    if FIND-SET(u) ≠ FIND-SET(v):', '      A ← A ∪ {(u, v)}; UNION(u, v)', '    else: skip (it would form a cycle)', '  return A'],
+  prim: ['MST-PRIM(G, w, r):', '  for each u: key[u] ← ∞; parent[u] ← NIL', '  key[r] ← 0; Q ← all vertices', '  while Q is not empty:', '    u ← EXTRACT-MIN(Q)       ▸ u joins tree', '    for each neighbor v of u:', '      if v ∈ Q and w(u, v) < key[v]:', '        parent[v] ← u; key[v] ← w(u, v)'],
+};
+
+/* ---------- recompute / playback ---------- */
+function graphChanged() {
+  stop(); awaiting = false;
+  steps = G.nodes.length && node(start) ? generate(algo) : [];
+  idx = 0;
+  $('#start').innerHTML = labels().map(l => `<option ${l === start ? 'selected' : ''}>${l}</option>`).join('');
+  $('#scrub').max = Math.max(0, steps.length - 1);
+  renderAnswers();
+  render();
+}
+function go(i) {
+  if (!steps.length) return;
+  awaiting = false; $('#fb').textContent = ''; $('#fb').className = 'fb';
+  idx = clamp(i, 0, steps.length - 1);
+  render();
+}
+function next() {
+  if (!steps.length || idx >= steps.length - 1) { stop(); return false; }
+  if (predict && steps[idx + 1].ask && !awaiting) {
+    awaiting = true; score.missed = false; stop();
+    $('#fb').textContent = ''; render(); return false;
+  }
+  if (awaiting) return false;
+  idx++; $('#fb').textContent = ''; render(); return true;
+}
+function checkPrediction(val) {
+  const want = steps[idx + 1].ask.val;
+  if (val === want) {
+    score.total++; if (!score.missed) score.first++;
+    awaiting = false; idx++;
+    $('#fb').className = 'fb ok';
+    $('#fb').textContent = algo === 'kruskal' ? `Correct: ${val} is the next edge added.` : `Correct: ${val} is extracted next.`;
+    render();
+    return;
+  }
+  score.missed = true;
+  $('#fb').className = 'fb no';
+  $('#fb').textContent = algo === 'kruskal'
+    ? `Not ${val}. Look for the lightest remaining edge whose ends are in different sets.`
+    : `Not ${val}. Look at the priority queue: the vertex with the smallest key comes out first.`;
+  const el = document.querySelector(`[data-node="${val}"]`);
+  if (el) { el.classList.remove('wrong'); void el.getBBox(); el.classList.add('wrong'); }
+}
+function speedMs() { return 1600 / Math.pow(1.45, +$('#speed').value - 1); }
+function play() {
+  if (timer) { stop(); return; }
+  if (idx >= steps.length - 1) idx = 0;
+  const tick = () => { if (next()) timer = setTimeout(tick, speedMs()); else stop(); };
+  timer = setTimeout(tick, 0);
+  $('#b-play').textContent = '❚❚ Pause';
+}
+function stop() { clearTimeout(timer); timer = null; $('#b-play').textContent = '▶ Play'; }
+
+/* ---------- rendering ---------- */
+const svg = $('#graph');
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const keyTxt = k => k === null ? '∞' : k;
+
+function render() {
+  const S = steps[idx];
+  svg.setAttribute('class', `mode-${mode}${awaiting ? ' awaiting' : ''}`);
+  let eh = '', wh = '';
+  for (const e of G.edges) {
+    const a = node(e.u), b = node(e.v), k = ek(e.u, e.v);
+    let cls = S?.es[k] || 'idle';
+    if (S?.exam === k) cls = 'exam';
+    eh += `<g data-edge="${k}"><line class="hit" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/><line class="edge ${cls}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/></g>`;
+    const bw = 16 + 10 * String(e.w).length;
+    wh += `<g class="wl ${cls}${editing === k ? ' editing' : ''}" data-edge="${k}" transform="translate(${(a.x + b.x) / 2},${(a.y + b.y) / 2})"><rect x="${-bw / 2}" y="-13" width="${bw}" height="26" rx="6"/><text dy="0.36em">${e.w}</text></g>`;
+  }
+  $('#edges').innerHTML = eh;
+  $('#wlabels').innerHTML = wh;
+  const ends = S?.exam ? S.exam.split('–') : [];
+  let nh = '';
+  for (const n of G.nodes) {
+    const st = S?.ns[n.id] || 'idle';
+    const cur = S?.cur === n.id || ends.includes(n.id);
+    const sub = S && algo === 'prim' ? `key ${keyTxt(S.key[n.id])}` : '';
+    nh += `<g class="node st-${st}${cur ? ' is-current' : ''}${algo === 'prim' && n.id === start ? ' is-start' : ''}${pendingEdge === n.id ? ' pending' : ''}" data-node="${n.id}" transform="translate(${n.x},${n.y})">
+      <circle class="halo" r="${R + 8}"/><circle class="body" r="${R}"/><text class="lbl" dy="0.36em">${n.id}</text>
+      ${sub ? `<text class="sub" y="${R + 16}">${sub}</text>` : ''}</g>`;
+  }
+  if (!G.nodes.length) nh = `<text class="empty-msg" x="400" y="260">Choose “Add node” and click here to place nodes</text>`;
+  $('#nodes').innerHTML = nh;
+
+  // narration + playback state
+  $('#now').classList.toggle('ask', awaiting);
+  $('#now-title').textContent = awaiting ? 'Your turn' : 'What’s happening';
+  $('#msg').textContent = awaiting
+    ? (algo === 'kruskal' ? 'Which edge will Kruskal add to the tree next? Click the edge or its weight.' : 'Which vertex will Prim extract next? Click it on the graph.')
+    : S ? S.msg : 'Add some nodes and edges to start.';
+  $('#counter').textContent = steps.length ? `Step ${idx + 1} / ${steps.length}` : 'No steps';
+  $('#scrub').value = idx;
+  $('#b-prev').disabled = $('#b-reset').disabled = idx === 0;
+  $('#b-next').disabled = $('#b-end').disabled = idx >= steps.length - 1;
+  $('#score').textContent = predict ? `First-try correct: ${score.first} / ${score.total}` : '';
+  $('#predict-note').textContent = algo === 'kruskal' ? 'Before each edge is added, you click the edge you think comes next.' : 'Before each vertex joins the tree, you click the vertex you think comes next.';
+  $('#start-field').hidden = algo !== 'prim';
+  $('#lg-q').hidden = $('#lg-cand').hidden = algo !== 'prim';
+  $('#lg-rej').hidden = algo !== 'kruskal';
+
+  // tree summary
+  const n = G.nodes.length;
+  $('#tree-title').textContent = `Tree edges (${S ? S.tree.length : 0} of ${Math.max(n - 1, 0)})`;
+  $('#total').textContent = S ? S.total : 0;
+  $('#tree').innerHTML = S && S.tree.length
+    ? S.tree.map((k, i) => `<span class="chip ord">${k}<em>${edgeByKey(k).w}</em></span>`).join('')
+    : `<span class="muted">no edges yet</span>`;
+
+  // main data structure
+  if (algo === 'kruskal') {
+    $('#ds-title').textContent = 'Edges sorted by weight';
+    const rows = S?.sorted || [];
+    const tag = {tree: 'added', reject: 'cycle, skipped', check: 'checking…', unused: 'not needed', '': ''};
+    $('#ds').innerHTML = rows.length
+      ? `<div class="elist" id="elist">${rows.map((e, i) => `<div class="erow ${e.s}${S.cursor === i ? ' cur' : ''}"><span class="ek">${e.k}</span><span class="ew">${e.w}</span><span class="es">${tag[e.s]}</span></div>`).join('')}</div>`
+      : `<span class="muted">Not sorted yet.</span>`;
+    const list = $('#elist'), c = list?.querySelector('.cur');
+    if (c && (c.offsetTop < list.scrollTop || c.offsetTop + c.offsetHeight > list.scrollTop + list.clientHeight)) list.scrollTop = c.offsetTop - list.clientHeight / 2;
+    $('#aux-title').textContent = 'Disjoint sets';
+    $('#aux').innerHTML = S ? `<div class="sets">${S.sets.map(g => `<span class="set${g.some(x => ends.includes(x)) ? ' hot' : ''}">{${g.join(', ')}}</span>`).join('')}</div>` : '';
+  } else {
+    $('#ds-title').textContent = 'Priority queue Q (smallest key first)';
+    const q = S?.pq || [];
+    $('#ds').innerHTML = `<div class="ds">${q.length ? `<span class="end">min</span>` + q.map((it, i) => `<span class="chip${it.k === null ? ' inf' : ''}${i === 0 ? ' hot' : ''}">${it.n}<em>${keyTxt(it.k)}</em></span>`).join('') : '<span class="muted">empty</span>'}</div>`;
+    $('#aux-title').textContent = 'Key & parent';
+    const L = labels();
+    $('#aux').innerHTML = S ? `<div class="tbl-wrap"><table><tr><th>vertex</th><th>key</th><th>parent</th><th>in tree</th></tr>${L.map(v => `<tr class="${S.cur === v ? 'cur' : ''}"><td>${v}</td><td>${keyTxt(S.key[v])}</td><td>${S.par[v] ?? '—'}</td><td>${S.inQ[v] ? '' : '✓'}</td></tr>`).join('')}</table></div>` : '';
+  }
+  $('#code').innerHTML = CODE[algo].map((l, i) => `<div class="${S && S.line.includes(i) ? 'on' : ''}">${esc(l)}</div>`).join('');
+
+  const hints = {move: 'Drag nodes to rearrange. Click a weight to change it.' + (algo === 'prim' ? ' Click a node to make it the start.' : ''),
+    node: 'Click empty space to add a node.',
+    edge: pendingEdge ? `Now click the node to connect ${pendingEdge} to.` : 'Click one node, then another, to connect them.',
+    weight: 'Click an edge or its weight, type a number, press Enter.',
+    delete: 'Click a node or an edge to remove it.'};
+  $('#hint').textContent = awaiting ? (algo === 'kruskal' ? 'Click the edge you predict.' : 'Click the vertex you predict.') : hints[mode];
+}
+
+function renderAnswers() {
+  if (!G.nodes.length) { $('#ans').innerHTML = '<span class="muted">No graph yet.</span>'; return; }
+  const sum = list => { const s = list.at(-1); return `${s.tree.map(k => `${k} (${edgeByKey(k).w})`).join(', ') || 'no edges'}; total ${s.total}`; };
+  const ws = G.edges.map(e => e.w), distinct = new Set(ws).size === ws.length;
+  $('#ans').innerHTML = `<div><b>Kruskal</b>, edges in the order added: ${sum(genKruskal())}</div>
+    <div><b>Prim from ${start}</b>, edges in the order added: ${sum(genPrim(start))}</div>
+    <span class="muted">${distinct ? 'All edge weights are different, so this graph has exactly one MST. Both algorithms find the same edges, in a different order.' : 'Some edge weights are equal, so the graph may have more than one MST. The two algorithms can pick different edges, but the total weight is always the same.'}</span>`;
+}
+let hintTimer;
+function flashHint(t) { $('#hint').textContent = t; clearTimeout(hintTimer); hintTimer = setTimeout(render, 1800); }
+
+/* ---------- weight editor ---------- */
+const wedit = $('#wedit');
+function openEditor(k) {
+  const e = edgeByKey(k); if (!e) return;
+  stop(); editing = k;
+  const a = node(e.u), b = node(e.v), p = svg.createSVGPoint();
+  p.x = (a.x + b.x) / 2; p.y = (a.y + b.y) / 2;
+  const sp = p.matrixTransform(svg.getScreenCTM()), box = $('.stage').getBoundingClientRect();
+  wedit.style.left = (sp.x - box.left) + 'px'; wedit.style.top = (sp.y - box.top) + 'px';
+  wedit.value = e.w; wedit.hidden = false; wedit.focus(); wedit.select();
+  render();
+}
+function closeEditor(save) {
+  if (!editing) return;
+  const e = edgeByKey(editing); editing = null; wedit.hidden = true;
+  if (save && e) {
+    const v = Math.round(+wedit.value);
+    if (wedit.value !== '' && v >= 0 && v <= 99) e.w = v; else flashHint('Weights must be whole numbers from 0 to 99.');
+  }
+  graphChanged();
+}
+wedit.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); closeEditor(true); }
+  else if (e.key === 'Escape') closeEditor(false);
+});
+wedit.addEventListener('blur', () => closeEditor(true));
+
+/* ---------- pointer interaction ---------- */
+function pt(e) {
+  const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+svg.addEventListener('pointerdown', e => {
+  const p = pt(e);
+  const nEl = e.target.closest('[data-node]'), eEl = e.target.closest('[data-edge]');
+  if (awaiting) {
+    if (algo === 'prim' && nEl) checkPrediction(nEl.dataset.node);
+    if (algo === 'kruskal' && eEl) checkPrediction(eEl.dataset.edge);
+    return;
+  }
+  if (nEl) {
+    const id = nEl.dataset.node;
+    if (mode === 'delete') { removeNode(id); return; }
+    if (mode === 'edge') {
+      if (!pendingEdge) { pendingEdge = id; render(); }
+      else { const a = pendingEdge; pendingEdge = null; $('#rubber').setAttribute('visibility', 'hidden'); addEdge(a, id); }
+      return;
+    }
+    const n = node(id);
+    drag = {id, ox: p.x - n.x, oy: p.y - n.y, sx: p.x, sy: p.y, moved: false};
+    svg.setPointerCapture(e.pointerId);
+    return;
+  }
+  if (eEl) {
+    const k = eEl.dataset.edge;
+    if (mode === 'delete') { removeEdge(k); return; }
+    if (mode === 'weight' || (mode === 'move' && e.target.closest('.wl'))) { setTimeout(() => openEditor(k), 0); return; }
+  }
+  if (mode === 'node') { addNode(p.x, p.y); return; }
+  if (mode === 'edge' && pendingEdge) { pendingEdge = null; $('#rubber').setAttribute('visibility', 'hidden'); render(); }
+});
+svg.addEventListener('pointermove', e => {
+  const p = pt(e);
+  if (drag) {
+    if (Math.hypot(p.x - drag.sx, p.y - drag.sy) > 4) drag.moved = true;
+    if (drag.moved) { const n = node(drag.id); n.x = clamp(p.x - drag.ox, R + 4, W - R - 4); n.y = clamp(p.y - drag.oy, R + 4, H - R - 20); render(); }
+  } else if (mode === 'edge' && pendingEdge) {
+    const a = node(pendingEdge), r = $('#rubber');
+    r.setAttribute('x1', a.x); r.setAttribute('y1', a.y); r.setAttribute('x2', p.x); r.setAttribute('y2', p.y); r.setAttribute('visibility', 'visible');
+  }
+});
+svg.addEventListener('pointerup', () => {
+  if (drag && !drag.moved && mode === 'move' && algo === 'prim' && drag.id !== start) { start = drag.id; graphChanged(); }
+  drag = null;
+});
+
+/* ---------- controls ---------- */
+function bindSeg(sel, fn) {
+  $(sel).addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    $(sel).querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    fn(b.dataset.v);
+  });
+}
+bindSeg('#algo', v => { algo = v; graphChanged(); });
+bindSeg('#mode', v => { mode = v; pendingEdge = null; $('#rubber').setAttribute('visibility', 'hidden'); render(); });
+$('#preset').innerHTML = Object.entries(PRESETS).map(([k, p]) => `<option value="${k}">${p.name}</option>`).join('');
+$('#preset').addEventListener('change', e => loadPreset(e.target.value));
+$('#start').addEventListener('change', e => { start = e.target.value; graphChanged(); });
+$('#randw').addEventListener('click', () => { G.edges.forEach(e => e.w = rnd(1, 15)); graphChanged(); });
+$('#clear').addEventListener('click', () => { G.nodes = []; G.edges = []; $('#preset').value = 'empty'; mode = 'node';
+  $('#mode').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x.dataset.v === 'node')); graphChanged(); });
+$('#b-reset').addEventListener('click', () => { stop(); go(0); });
+$('#b-prev').addEventListener('click', () => { stop(); go(idx - 1); });
+$('#b-next').addEventListener('click', () => { stop(); next(); });
+$('#b-end').addEventListener('click', () => { stop(); go(steps.length - 1); });
+$('#b-play').addEventListener('click', play);
+$('#scrub').addEventListener('input', e => { stop(); go(+e.target.value); });
+$('#predict').addEventListener('change', e => { predict = e.target.checked; score = {first: 0, total: 0, missed: false}; awaiting = false; render(); });
+document.addEventListener('keydown', e => {
+  if (e.target.closest('select, input:not([type=checkbox])')) return;
+  if (e.key === 'ArrowRight') { e.preventDefault(); stop(); next(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); stop(); go(idx - 1); }
+  else if (e.key === 'Home') { stop(); go(0); }
+  else if (e.key === 'End') { stop(); go(steps.length - 1); }
+  else if (e.key === ' ' && !e.target.closest('button')) { e.preventDefault(); play(); }
+});
+
+loadPreset('textbook');
+</script>
+</body>
+</html>

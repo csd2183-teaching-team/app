@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Data Structures Lab</title>
+<title>Graph Traversal · Data Structures Lab</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -173,6 +173,11 @@ details .ans{font-family:var(--mono);font-size:13px;margin-top:8px;display:flex;
 .two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
 @media (max-width:560px){.two{grid-template-columns:minmax(0,1fr)}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+[hidden]{display:none!important}
+/* topic nav links */
+a.topic{text-decoration:none;color:inherit}
+.tag.now{background:var(--frontier);color:var(--on-warm);border-color:var(--frontier);opacity:1}
 </style>
 </head>
 <body>
@@ -309,16 +314,19 @@ details .ans{font-family:var(--mono);font-size:13px;margin-top:8px;display:flex;
 <script>
 /* ---------- topic registry (add future weeks here) ---------- */
 const TOPICS = [
-  {id:'graphs', name:'Graph Traversal', live:true},
-  {id:'mst', name:'Minimum Spanning Trees'},
+  {id:'graphs', name:'Graph Traversal', href:'graph-traversal.html'},
+  {id:'mst', name:'Minimum Spanning Trees', href:'mst.html'},
   {id:'paths', name:'Shortest Paths'},
   {id:'dp', name:'Dynamic Programming'},
   {id:'greedy', name:'Greedy Algorithms'},
 ];
-const CURRENT_TOPIC = 'graphs';
-document.getElementById('topics').innerHTML = TOPICS.map(t =>
-  `<button type="button" class="topic" ${t.live ? '' : 'disabled'} ${t.id === CURRENT_TOPIC ? 'aria-current="page"' : ''}>${t.name}<span class="tag">${t.id === CURRENT_TOPIC ? 'This week' : t.live ? 'Open' : 'Soon'}</span></button>`
-).join('');
+const THIS_WEEK = 'mst', PAGE = 'graphs';
+document.getElementById('topics').innerHTML = TOPICS.map(t => {
+  const tag = `<span class="tag${t.id === THIS_WEEK ? ' now' : ''}">${t.id === THIS_WEEK ? 'This week' : t.href ? 'Open' : 'Soon'}</span>`;
+  return t.href
+    ? `<a class="topic" href="${t.href}"${t.id === PAGE ? ' aria-current="page"' : ''}>${t.name}${tag}</a>`
+    : `<button type="button" class="topic" disabled>${t.name}${tag}</button>`;
+}).join('');
 
 /* ---------- graph model ---------- */
 const $ = s => document.querySelector(s);
