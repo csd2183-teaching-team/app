@@ -367,6 +367,9 @@ const PRESETS = {
   textbook: {name: 'Textbook (9 vertices)',
     nodes: {A:[70,260], B:[200,110], C:[400,110], D:[600,110], E:[730,260], F:[600,410], G:[400,410], H:[200,410], I:[320,260]},
     edges: 'AB4 AH8 BC8 BH11 CD7 CF4 CI2 DE9 DF14 EF10 FG2 GH1 GI6 HI7'},
+  lecture: {name: 'Lecture example (16 edges)',
+    nodes: {A:[140,90], B:[400,90], C:[640,90], D:[140,260], E:[400,260], F:[640,260], G:[140,430], H:[400,430], I:[640,430]},
+    edges: 'AB18 BC19 AD6 BE20 CE1 CF4 CI9 DE13 EF8 DG16 DH0 EH15 EI5 FI3 GH14 HI17'},
   campus: {name: 'Campus network',
     nodes: {A:[110,120], B:[330,80], C:[560,110], D:[720,260], E:[540,420], F:[290,430], G:[390,260]},
     edges: 'AB7 AF9 AG5 BC8 BG4 CD6 CG3 DE5 EG7 EF6 FG8'},
@@ -425,6 +428,22 @@ function removeNode(id) {
 }
 function removeEdge(k) { G.edges = G.edges.filter(e => ek(e.u, e.v) !== k); graphChanged(); }
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+// Straight edge, or a curve bending away from the graph's center when a straight line would pass through another vertex.
+function edgeGeom(e) {
+  const a = node(e.u), b = node(e.v), dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1;
+  const blocked = G.nodes.some(n => {
+    if (n === a || n === b) return false;
+    const t = ((n.x - a.x) * dx + (n.y - a.y) * dy) / (L * L);
+    return t > 0 && t < 1 && Math.hypot(a.x + t * dx - n.x, a.y + t * dy - n.y) < R + 6;
+  });
+  if (!blocked) return {d: `M${a.x} ${a.y} L${b.x} ${b.y}`, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2};
+  const cx = G.nodes.reduce((s, n) => s + n.x, 0) / G.nodes.length, cy = G.nodes.reduce((s, n) => s + n.y, 0) / G.nodes.length;
+  let px = -dy / L, py = dx / L;
+  const mx0 = (a.x + b.x) / 2, my0 = (a.y + b.y) / 2;
+  if ((mx0 - cx) * px + (my0 - cy) * py < 0) { px = -px; py = -py; }
+  const off = clamp(L * 0.4, 50, 150), qx = mx0 + px * off, qy = my0 + py * off;
+  return {d: `M${a.x} ${a.y} Q${qx} ${qy} ${b.x} ${b.y}`, mx: (a.x + 2 * qx + b.x) / 4, my: (a.y + 2 * qy + b.y) / 4};
+}
 
 /* ---------- step recording ---------- */
 function recorder(extra) {
@@ -599,9 +618,10 @@ function render() {
     const a = node(e.u), b = node(e.v), k = ek(e.u, e.v);
     let cls = S?.es[k] || 'idle';
     if (S?.exam === k) cls = 'exam';
-    eh += `<g data-edge="${k}"><line class="hit" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/><line class="edge ${cls}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/></g>`;
+    const g = edgeGeom(e);
+    eh += `<g data-edge="${k}"><path class="hit" d="${g.d}"/><path class="edge ${cls}" d="${g.d}"/></g>`;
     const bw = 16 + 10 * String(e.w).length;
-    wh += `<g class="wl ${cls}${editing === k ? ' editing' : ''}" data-edge="${k}" transform="translate(${(a.x + b.x) / 2},${(a.y + b.y) / 2})"><rect x="${-bw / 2}" y="-13" width="${bw}" height="26" rx="6"/><text dy="0.36em">${e.w}</text></g>`;
+    wh += `<g class="wl ${cls}${editing === k ? ' editing' : ''}" data-edge="${k}" transform="translate(${g.mx},${g.my})"><rect x="${-bw / 2}" y="-13" width="${bw}" height="26" rx="6"/><text dy="0.36em">${e.w}</text></g>`;
   }
   $('#edges').innerHTML = eh;
   $('#wlabels').innerHTML = wh;
@@ -688,8 +708,8 @@ const wedit = $('#wedit');
 function openEditor(k) {
   const e = edgeByKey(k); if (!e) return;
   stop(); editing = k;
-  const a = node(e.u), b = node(e.v), p = svg.createSVGPoint();
-  p.x = (a.x + b.x) / 2; p.y = (a.y + b.y) / 2;
+  const g = edgeGeom(e), p = svg.createSVGPoint();
+  p.x = g.mx; p.y = g.my;
   const sp = p.matrixTransform(svg.getScreenCTM()), box = $('.stage').getBoundingClientRect();
   wedit.style.left = (sp.x - box.left) + 'px'; wedit.style.top = (sp.y - box.top) + 'px';
   wedit.value = e.w; wedit.hidden = false; wedit.focus(); wedit.select();
