@@ -316,11 +316,11 @@ a.topic{text-decoration:none;color:inherit}
 const TOPICS = [
   {id:'graphs', name:'Graph Traversal', href:'graph-traversal.html'},
   {id:'mst', name:'Minimum Spanning Trees', href:'mst.html'},
-  {id:'paths', name:'Shortest Paths'},
+  {id:'paths', name:'Shortest Paths', href:'shortest-paths.html'},
   {id:'dp', name:'Dynamic Programming'},
   {id:'greedy', name:'Greedy Algorithms'},
 ];
-const THIS_WEEK = 'mst', PAGE = 'graphs';
+const THIS_WEEK = 'paths', PAGE = 'graphs';
 document.getElementById('topics').innerHTML = TOPICS.map(t => {
   const tag = `<span class="tag${t.id === THIS_WEEK ? ' now' : ''}">${t.id === THIS_WEEK ? 'This week' : t.href ? 'Open' : 'Soon'}</span>`;
   return t.href

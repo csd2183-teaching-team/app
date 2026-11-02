@@ -1,0 +1,1008 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shortest Paths · Data Structures Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: lab bench — the graph sits on graph paper at left, instrument readouts (queue/stack, code, tables) stack at right */
+:root{
+  --paper:#f2f5f9; --panel:#ffffff; --ink:#152038; --muted:#5a6781; --line:#d6deea; --grid:#e2e8f1;
+  --accent:#2b56e0; --accent-soft:#e3eaff;
+  --frontier:#efb128; --current:#e2437a; --done:#14998a; --cross:#7b61e8;
+  --on-warm:#271c00; --on-strong:#ffffff; --node:#ffffff;
+  --display:'Bricolage Grotesque','Avenir Next',system-ui,sans-serif;
+  --body:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0e1320; --panel:#151c2c; --ink:#e4e9f4; --muted:#95a2bc; --line:#2a344c; --grid:#192135;
+  --accent:#86a2ff; --accent-soft:#1f2a4a;
+  --frontier:#f4c34e; --current:#ff6e9c; --done:#35c2ae; --cross:#a490ff;
+  --on-warm:#271c00; --on-strong:#0e1320; --node:#1b2336; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --paper:#0e1320; --panel:#151c2c; --ink:#e4e9f4; --muted:#95a2bc; --line:#2a344c; --grid:#192135;
+  --accent:#86a2ff; --accent-soft:#1f2a4a;
+  --frontier:#f4c34e; --current:#ff6e9c; --done:#35c2ae; --cross:#a490ff;
+  --on-warm:#271c00; --on-strong:#0e1320; --node:#1b2336; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* header + topic nav */
+header{display:flex;flex-direction:column;gap:12px}
+.brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.brand h1{font-size:clamp(24px,3.4vw,34px);font-weight:800}
+.brand p{margin:0;color:var(--muted)}
+.topics{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.topic{flex:none;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 14px;cursor:pointer;display:flex;gap:8px;align-items:center;white-space:nowrap}
+.topic[aria-current="page"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.topic[disabled]{cursor:default;color:var(--muted);background:transparent}
+.tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:1px 7px;border-radius:999px;border:1px solid currentColor;opacity:.85}
+.topic[aria-current="page"] .tag{background:var(--frontier);color:var(--on-warm);border-color:var(--frontier);opacity:1}
+
+.lead{display:flex;flex-direction:column;gap:4px}
+.lead h2{font-size:clamp(22px,2.6vw,28px);font-weight:800}
+.lead p{margin:0;color:var(--muted);max-width:72ch}
+
+/* main grid */
+.lab{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:980px){.lab{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+
+/* controls */
+.controls{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 11px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--panel)}
+select{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.check{display:flex;gap:6px;align-items:center;cursor:pointer;user-select:none}
+.check input{accent-color:var(--accent);width:16px;height:16px}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 12px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--panel);border-color:var(--accent);font-weight:600;min-width:84px}
+.btn:disabled{opacity:.4;cursor:default}
+
+/* canvas */
+.stage{padding:0;overflow:hidden}
+.stage-top{display:flex;flex-wrap:wrap;gap:10px 16px;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
+.hint{color:var(--muted);font-size:13px}
+#graph{display:block;width:100%;height:auto;aspect-ratio:800/520;max-width:100%;touch-action:none;
+  background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:20px 20px}
+#graph.mode-node{cursor:copy}
+#graph.mode-edge{cursor:crosshair}
+#graph.mode-delete{cursor:not-allowed}
+.node{cursor:grab}
+.node .body{fill:var(--node);stroke:var(--ink);stroke-width:2;transition:fill .2s}
+.node .lbl{font-family:var(--display);font-weight:800;font-size:17px;text-anchor:middle;fill:var(--ink);pointer-events:none}
+.node .sub{font-family:var(--mono);font-size:12px;text-anchor:middle;fill:var(--muted);pointer-events:none}
+.node .halo{fill:none;stroke:var(--ink);stroke-width:1.5;stroke-dasharray:3 4;opacity:0}
+.node.is-start .halo{opacity:.8}
+.node.st-frontier .body{fill:var(--frontier);stroke:var(--frontier)}
+.node.st-frontier .lbl{fill:var(--on-warm)}
+.node.st-current .body{fill:var(--current);stroke:var(--current)}
+.node.st-current .lbl{fill:var(--on-strong)}
+.node.st-done .body{fill:var(--done);stroke:var(--done)}
+.node.st-done .lbl{fill:var(--on-strong)}
+.node.is-current .body{stroke:var(--ink);stroke-width:3.5}
+.node.pending .body{stroke:var(--accent);stroke-width:4}
+.node.wrong .body{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.badge{fill:var(--ink)}
+.badge-t{fill:var(--paper);font-family:var(--mono);font-size:11px;font-weight:600;text-anchor:middle;pointer-events:none}
+.awaiting .node{cursor:pointer}
+.awaiting .node:hover .body{stroke:var(--accent);stroke-width:4}
+
+.edge{stroke:var(--muted);stroke-width:2.5;opacity:.6;fill:none}
+.edge.tree{stroke:var(--done);stroke-width:5;opacity:1}
+.edge.seen{stroke-dasharray:4 6;opacity:.45}
+.edge.back{stroke:var(--current);stroke-width:3;stroke-dasharray:9 6;opacity:1}
+.edge.forward,.edge.cross{stroke:var(--cross);stroke-width:3;stroke-dasharray:2 6;stroke-linecap:round;opacity:1}
+.edge.exam{stroke:var(--accent);stroke-width:6;opacity:1;stroke-dasharray:none}
+.hit{stroke:transparent;stroke-width:16;fill:none}
+.mode-delete .hit{cursor:not-allowed}
+.rubber{stroke:var(--accent);stroke-width:2;stroke-dasharray:5 5;pointer-events:none}
+.m-idle,.m-seen{fill:var(--muted)} .m-tree{fill:var(--done)} .m-back{fill:var(--current)} .m-cross,.m-forward{fill:var(--cross)} .m-exam{fill:var(--accent)}
+.empty-msg{font-family:var(--display);font-size:20px;fill:var(--muted);text-anchor:middle}
+
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;padding:10px 14px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:13px;height:13px;border-radius:50%;border:2px solid var(--ink);background:var(--node);display:inline-block}
+.dot.f{background:var(--frontier);border-color:var(--frontier)} .dot.c{background:var(--current);border-color:var(--current)} .dot.d{background:var(--done);border-color:var(--done)}
+.ln{width:22px;height:0;border-top:4px solid var(--done);display:inline-block}
+.ln.b{border-top:3px dashed var(--current)} .ln.x{border-top:3px dotted var(--cross)} .ln.e{border-top:4px solid var(--accent)}
+
+/* playback */
+.play{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.play .grp{display:flex;gap:6px;flex-wrap:wrap}
+.counter{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+input[type=range]{accent-color:var(--accent);width:110px}
+.scrub{flex:1 1 100%;width:100%}
+.predict-bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:14px}
+.score{font-family:var(--mono);font-size:13px;color:var(--muted)}
+
+/* readouts */
+.now{border-left:4px solid var(--accent)}
+.now p{margin:0;font-size:16px;min-height:3em}
+.now.ask{border-left-color:var(--current)}
+.now .fb{margin-top:6px;font-size:14px;font-weight:600;min-height:0}
+.fb.ok{color:var(--done)} .fb.no{color:var(--current)}
+.ds{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:44px;font-family:var(--mono)}
+.ds .end{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.chip{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:34px;padding:0 8px;border-radius:6px;border:2px solid var(--frontier);background:var(--frontier);color:var(--on-warm);font-weight:600;font-family:var(--mono)}
+.chip.hot{border-color:var(--ink);box-shadow:0 0 0 2px var(--panel) inset}
+.chip.stale{background:transparent;color:var(--muted);border-color:var(--line);text-decoration:line-through}
+.chip.call{background:var(--accent-soft);border-color:var(--accent);color:var(--ink);font-size:13px}
+.chip.call.hot{background:var(--current);border-color:var(--current);color:var(--on-strong)}
+.chip.ord{background:var(--done);border-color:var(--done);color:var(--on-strong);position:relative}
+.chip.ord small{position:absolute;top:-8px;right:-6px;background:var(--ink);color:var(--paper);font-size:10px;border-radius:999px;padding:0 4px;line-height:15px}
+.muted{color:var(--muted);font-size:13px}
+.code{font-family:var(--mono);font-size:13px;line-height:1.75;margin:0;overflow-x:auto;white-space:pre;counter-reset:ln}
+.code div{padding:0 8px;border-radius:4px}
+.code div::before{counter-increment:ln;content:counter(ln);display:inline-block;width:1.6em;color:var(--muted);opacity:.6}
+.code div.on{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+tr.cur td{background:var(--accent-soft)}
+.adj{font-family:var(--mono);font-size:13px;display:flex;flex-direction:column;gap:2px}
+.adj b{display:inline-block;width:1.6em}
+.adj .on{color:var(--accent);font-weight:600;text-decoration:underline}
+.adj .row.cur{background:var(--accent-soft);border-radius:4px}
+details summary{cursor:pointer;font-weight:600}
+details .ans{font-family:var(--mono);font-size:13px;margin-top:8px;display:flex;flex-direction:column;gap:4px}
+.tasks{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:8px;max-width:75ch}
+.tasks li::marker{font-family:var(--mono);color:var(--muted)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+@media (max-width:560px){.two{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+[hidden]{display:none!important}
+/* topic nav links */
+a.topic{text-decoration:none;color:inherit}
+.tag.now{background:var(--frontier);color:var(--on-warm);border-color:var(--frontier);opacity:1}
+
+/* MST page */
+.stage{position:relative}
+#wedit{position:absolute;transform:translate(-50%,-50%);width:72px;padding:4px 6px;font-family:var(--mono);font-size:15px;text-align:center;border:2px solid var(--accent);border-radius:6px;background:var(--panel);color:var(--ink);z-index:2}
+.wl{cursor:pointer}
+.wl rect{fill:var(--panel);stroke:var(--line);stroke-width:1.5}
+.wl text{font-family:var(--mono);font-size:16px;font-weight:600;text-anchor:middle;fill:var(--ink);pointer-events:none}
+.wl.tree rect{fill:var(--done);stroke:var(--done)} .wl.tree text{fill:var(--on-strong)}
+.wl.cand rect{fill:var(--frontier);stroke:var(--frontier)} .wl.cand text{fill:var(--on-warm)}
+.wl.exam rect{fill:var(--accent);stroke:var(--accent)} .wl.exam text{fill:var(--panel)}
+.wl.reject rect{stroke:var(--current)} .wl.reject text{fill:var(--current)}
+.wl.seen text{fill:var(--muted)}
+.wl.editing rect{stroke:var(--accent);stroke-width:3}
+.awaiting .wl:hover rect,.mode-weight .wl:hover rect{stroke:var(--accent);stroke-width:3}
+.edge.cand{stroke:var(--frontier);stroke-width:5;opacity:1}
+.edge.reject{stroke:var(--current);stroke-width:2.5;stroke-dasharray:3 7;stroke-linecap:round;opacity:.9}
+.awaiting [data-edge]{cursor:pointer}
+.ln.k{border-top:4px solid var(--frontier)} .ln.r{border-top:3px dotted var(--current)}
+.tree-sum{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+.total{font-family:var(--display);font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.elist{position:relative;display:flex;flex-direction:column;gap:2px;max-height:290px;overflow:auto;font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+.erow{display:grid;grid-template-columns:4em 2.5em minmax(0,1fr);gap:8px;padding:3px 8px;border-radius:4px}
+.erow .es{color:var(--muted)}
+.erow.cur{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.erow.tree .es{color:var(--done);font-weight:600}
+.erow.reject .es{color:var(--current)}
+.erow.reject .ek,.erow.reject .ew{text-decoration:line-through;color:var(--muted)}
+.erow.unused{opacity:.45}
+.sets{display:flex;flex-wrap:wrap;gap:6px;font-family:var(--mono);font-size:13px}
+.set{padding:4px 10px;border:1px solid var(--line);border-radius:999px}
+.set.hot{border-color:var(--accent);background:var(--accent-soft)}
+.chip em{font-style:normal;font-size:11px;margin-left:6px;opacity:.85}
+.chip.inf{background:transparent;border-color:var(--line);color:var(--muted)}
+
+/* Shortest paths page */
+.node.is-target .halo{opacity:1;stroke:var(--frontier);stroke-width:3.5;stroke-dasharray:none}
+.ring{width:14px;height:14px;border-radius:50%;display:inline-block;border:2px dashed var(--ink)}
+.ring.t{border:3px solid var(--frontier)}
+.ln.p{border-top:6px solid var(--frontier)}
+.edge.path{stroke:var(--frontier);stroke-width:7;opacity:1}
+.edge.neg,.edge.warn{stroke:var(--current);stroke-width:4;stroke-dasharray:8 5;opacity:1}
+.m-path{fill:var(--frontier)} .m-neg,.m-warn{fill:var(--current)}
+.wl.path rect{fill:var(--frontier);stroke:var(--frontier)} .wl.path text{fill:var(--on-warm)}
+.wl.neg rect,.wl.warn rect{fill:var(--current);stroke:var(--current)} .wl.neg text,.wl.warn text{fill:var(--on-strong)}
+.wl.negw:not(.tree):not(.path):not(.exam):not(.neg):not(.warn) text{fill:var(--current)}
+.warn{border-left:4px solid var(--current);display:flex;flex-direction:column;gap:6px}
+.warn p{margin:0}
+.arrow{color:var(--muted);font-family:var(--mono)}
+.chip.pathv{background:var(--frontier);border-color:var(--frontier);color:var(--on-warm)}
+.erow.upd .es{color:var(--done);font-weight:600}
+.erow.skip{opacity:.55}
+.erow.ok .es{color:var(--done)}
+.erow.bad{background:var(--accent-soft)} .erow.bad .es{color:var(--current);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1><a href="./" style="color:inherit;text-decoration:none">Data Structures Lab</a></h1>
+      <p>Build a case, run the algorithm one step at a time, and watch the data structures change.</p>
+    </div>
+    <nav class="topics" id="topics" aria-label="Topics"></nav>
+  </header>
+
+  <section data-topic="paths" class="col" style="gap:18px">
+    <div class="lead">
+      <h2>Shortest Paths (Single-Source): Dijkstra, Bellman-Ford and A*</h2>
+      <p>Each algorithm keeps a shortest-path estimate <strong>v.d</strong> and a predecessor <strong>v.π</strong>, and improves them with <strong>RELAX</strong>. They differ in which edges they relax and in what order. <strong>Dijkstra</strong> greedily takes the closest unfinished vertex using a priority queue and needs non-negative weights. <strong>Bellman-Ford</strong> relaxes every edge |V| − 1 times, allows negative weights and detects negative cycles. <strong>A*</strong> is Dijkstra aimed at one target, guided by an estimate h(v) of the distance still to go.</p>
+    </div>
+
+    <div class="panel controls">
+      <div class="field">
+        <span class="label">Algorithm</span>
+        <div class="seg" id="algo">
+          <button type="button" data-v="dijkstra" aria-pressed="true">Dijkstra</button>
+          <button type="button" data-v="bf">Bellman-Ford</button>
+          <button type="button" data-v="astar">A*</button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label" for="src">Source s</label>
+        <select id="src"></select>
+      </div>
+      <div class="field">
+        <label class="label" for="dst">Target</label>
+        <select id="dst"></select>
+      </div>
+      <div class="field" id="heur-field" hidden>
+        <label class="label" for="heur">Heuristic h(v)</label>
+        <select id="heur">
+          <option value="euclid">Straight-line distance ÷ 40 px</option>
+          <option value="zero">h = 0 (same as Dijkstra)</option>
+          <option value="over">Overestimate: 3 × straight-line</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="label" for="preset">Example graph</label>
+        <select id="preset"></select>
+      </div>
+      <div class="field" style="gap:6px">
+        <span class="label">Options</span>
+        <label class="check"><input type="checkbox" id="undirected"> Two-way edges (undirected)</label>
+      </div>
+    </div>
+
+    <div class="panel warn" id="warn" hidden></div>
+
+    <div class="lab">
+      <div class="col">
+        <div class="panel stage">
+          <div class="stage-top">
+            <div class="seg" id="mode" aria-label="Edit mode">
+              <button type="button" data-v="move" aria-pressed="true">Move</button>
+              <button type="button" data-v="node">Add node</button>
+              <button type="button" data-v="edge">Add edge</button>
+              <button type="button" data-v="weight">Edit weight</button>
+              <button type="button" data-v="delete">Delete</button>
+            </div>
+            <span class="hint" id="hint"></span>
+            <button type="button" class="btn" id="clear">Clear graph</button>
+          </div>
+          <svg id="graph" viewBox="0 0 800 520" role="img" aria-label="Weighted graph canvas">
+            <defs id="defs"></defs>
+            <g id="edges"></g>
+            <line id="rubber" class="rubber" x1="0" y1="0" x2="0" y2="0" visibility="hidden"></line>
+            <g id="wlabels"></g>
+            <g id="nodes"></g>
+          </svg>
+          <input id="wedit" type="number" min="-99" max="99" step="1" aria-label="Edge weight" hidden>
+          <div class="legend">
+            <span><i class="dot"></i>d = ∞</span>
+            <span><i class="dot f"></i><span id="lg-f">in Q, d known</span></span>
+            <span><i class="dot c"></i>current</span>
+            <span><i class="dot d"></i><span id="lg-d">final (in S)</span></span>
+            <span><i class="ring s"></i>source</span>
+            <span><i class="ring t"></i>target</span>
+            <span><i class="ln e"></i>edge being relaxed</span>
+            <span><i class="ln"></i>π edge (shortest-path tree)</span>
+            <span><i class="ln p"></i>shortest path to target</span>
+            <span><i class="ln r"></i>problem edge</span>
+          </div>
+        </div>
+
+        <div class="panel play">
+          <div class="grp">
+            <button type="button" class="btn" id="b-reset" title="Back to step 1 (Home)">⏮ Reset</button>
+            <button type="button" class="btn" id="b-prev" title="Previous step (←)">◀ Back</button>
+            <button type="button" class="btn primary" id="b-play" title="Play / pause (Space)">▶ Play</button>
+            <button type="button" class="btn" id="b-next" title="Next step (→)">Next ▶</button>
+            <button type="button" class="btn" id="b-end" title="Jump to the result (End)">Result ⏭</button>
+          </div>
+          <label class="check" for="speed">Speed <input type="range" id="speed" min="1" max="10" value="5"></label>
+          <span class="counter" id="counter"></span>
+          <input type="range" class="scrub" id="scrub" min="0" max="0" value="0" aria-label="Scrub through steps">
+          <div class="predict-bar">
+            <label class="check"><input type="checkbox" id="predict"> Predict mode</label>
+            <span class="muted" id="predict-note"></span>
+            <span class="score" id="score"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="panel now" id="now">
+          <h3 class="label" id="now-title">What’s happening</h3>
+          <p id="msg"></p>
+          <p class="fb" id="fb"></p>
+        </div>
+        <div class="panel">
+          <h3 class="label" id="path-title">Path to target</h3>
+          <div id="path"></div>
+        </div>
+        <div class="panel">
+          <h3 class="label" id="ds-title">Priority queue Q</h3>
+          <div id="ds"></div>
+        </div>
+        <div class="panel">
+          <h3 class="label">Distance table</h3>
+          <div class="tbl-wrap"><table id="tbl"></table></div>
+        </div>
+        <div class="panel">
+          <h3 class="label">Pseudocode</h3>
+          <div class="code" id="code"></div>
+        </div>
+        <div class="panel">
+          <details>
+            <summary>Answer key for this graph</summary>
+            <div class="ans" id="ans"></div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ---------- topic nav (shared across pages) ---------- */
+const TOPICS = [
+  {id:'graphs', name:'Graph Traversal', href:'graph-traversal.html'},
+  {id:'mst', name:'Minimum Spanning Trees', href:'mst.html'},
+  {id:'paths', name:'Shortest Paths', href:'shortest-paths.html'},
+  {id:'dp', name:'Dynamic Programming'},
+  {id:'greedy', name:'Greedy Algorithms'},
+];
+const THIS_WEEK = 'paths', PAGE = 'paths';
+document.getElementById('topics').innerHTML = TOPICS.map(t => {
+  const tag = `<span class="tag${t.id === THIS_WEEK ? ' now' : ''}">${t.id === THIS_WEEK ? 'This week' : t.href ? 'Open' : 'Soon'}</span>`;
+  return t.href
+    ? `<a class="topic" href="${t.href}"${t.id === PAGE ? ' aria-current="page"' : ''}>${t.name}${tag}</a>`
+    : `<button type="button" class="topic" disabled>${t.name}${tag}</button>`;
+}).join('');
+
+/* ---------- graph model ---------- */
+const $ = s => document.querySelector(s);
+const R = 22, W = 800, H = 520, UNIT = 40;
+let G = {nodes: [], edges: [], directed: true};
+let algo = 'dijkstra', src = 's', dst = 'x', heur = 'euclid', mode = 'move';
+let steps = [], idx = 0, timer = null;
+let pendingEdge = null, drag = null, editing = null;
+let predict = false, awaiting = false, score = {first: 0, total: 0, missed: false};
+
+// Edge strings: from, to, weight (weight may be negative). Edge order is the order Bellman-Ford relaxes them.
+const PRESETS = {
+  dijkstra: {name: 'Dijkstra example (s, t, x, y, z)', directed: true, src: 's', dst: 'x',
+    nodes: {s:[100,260], t:[340,110], x:[640,110], y:[340,410], z:[640,410]},
+    edges: 'st10 sy5 tx1 ty2 yt3 yx9 yz2 zs7 zx6 xz4'},
+  bf: {name: 'Bellman-Ford example (negative edges)', directed: true, src: 's', dst: 'z',
+    nodes: {s:[100,260], t:[340,110], x:[640,110], y:[340,410], z:[640,410]},
+    edges: 'tx5 ty8 tz-4 xt-2 yx-3 yz9 zx7 zs2 st6 sy7'},
+  negcycle: {name: 'Negative cycle', directed: true, src: 's', dst: 'y',
+    nodes: {s:[120,260], t:[420,110], x:[420,410], y:[700,260]},
+    edges: 'st4 sx5 tx5 xy3 yt-10'},
+  negedge: {name: 'Negative edge breaks Dijkstra', directed: true, src: 's', dst: 'c',
+    nodes: {s:[110,260], a:[400,110], b:[400,410], c:[690,110]},
+    edges: 'sa3 sb5 ba-10 ac2'},
+  map: {name: 'City map for A* (undirected)', directed: false, src: 'A', dst: 'K',
+    nodes: {A:[230,260], B:[80,120], C:[70,260], D:[80,400], E:[370,110], F:[400,260], G:[370,420], H:[560,140], I:[560,380], J:[720,80], K:[730,260], L:[720,440]},
+    edges: 'AB6 AC4 AD6 BC4 CD4 AE6 AF7 AG6 EF4 FG5 EH7 FH6 FI6 GI5 HJ5 HK6 IK6 IL5 JK5 KL5'},
+  empty: {name: 'Empty (draw your own)', directed: true, src: 'A', dst: 'A', nodes: {}, edges: ''},
+};
+
+function loadPreset(key) {
+  const p = PRESETS[key];
+  G = {directed: p.directed, nodes: Object.entries(p.nodes).map(([id, [x, y]]) => ({id, x, y})),
+       edges: p.edges.split(' ').filter(Boolean).map(s => ({u: s[0], v: s[1], w: +s.slice(2)}))};
+  $('#undirected').checked = !p.directed;
+  src = p.src; dst = p.dst;
+  if (key === 'map') { setAlgo('astar'); } else if (key === 'bf' || key === 'negcycle') { setAlgo('bf'); } else if (key !== 'empty') { setAlgo('dijkstra'); }
+  graphChanged();
+}
+
+const node = id => G.nodes.find(n => n.id === id);
+const ek = (u, v) => G.directed ? u + '→' + v : (u < v ? u + '–' + v : v + '–' + u);
+const edgeByKey = k => G.edges.find(e => ek(e.u, e.v) === k);
+const labels = () => G.nodes.map(n => n.id).sort();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmt = d => d === null ? '∞' : d;
+const wtxt = w => w < 0 ? `(${w})` : w;
+// Outgoing edges of u, in alphabetical order of the neighbor.
+function out(u) {
+  const o = [];
+  for (const e of G.edges) {
+    if (e.u === u) o.push({v: e.v, w: e.w});
+    else if (!G.directed && e.v === u) o.push({v: e.u, w: e.w});
+  }
+  return o.sort((a, b) => a.v < b.v ? -1 : 1);
+}
+// Edge list in the order Bellman-Ford relaxes it. An undirected edge counts as two directed edges.
+function edgeList() {
+  const o = [];
+  for (const e of G.edges) {
+    o.push({u: e.u, v: e.v, w: e.w, k: ek(e.u, e.v)});
+    if (!G.directed) o.push({u: e.v, v: e.u, w: e.w, k: ek(e.u, e.v)});
+  }
+  return o;
+}
+function addNode(x, y) {
+  const id = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').find(c => !node(c));
+  if (!id) { flashHint('26 nodes is the limit.'); return; }
+  G.nodes.push({id, x: clamp(x, R + 4, W - R - 4), y: clamp(y, R + 4, H - R - 20)});
+  if (!node(src)) src = id;
+  if (!node(dst)) dst = id;
+  graphChanged();
+}
+function addEdge(u, v) {
+  if (u === v) { flashHint('Self-loops are not allowed here.'); return; }
+  if (edgeByKey(ek(u, v))) { flashHint('That edge already exists.'); return; }
+  const a = node(u), b = node(v);
+  G.edges.push({u, v, w: Math.max(1, Math.ceil(Math.hypot(a.x - b.x, a.y - b.y) / UNIT))});
+  graphChanged();
+  setTimeout(() => openEditor(ek(u, v)), 0);
+}
+function removeNode(id) {
+  G.nodes = G.nodes.filter(n => n.id !== id);
+  G.edges = G.edges.filter(e => e.u !== id && e.v !== id);
+  if (src === id) src = labels()[0] || 'A';
+  if (dst === id) dst = labels().at(-1) || 'A';
+  graphChanged();
+}
+function removeEdge(k) { G.edges = G.edges.filter(e => ek(e.u, e.v) !== k); graphChanged(); }
+
+/* ---------- heuristic ---------- */
+function hvals(t) {
+  const T = node(t), h = {};
+  G.nodes.forEach(n => {
+    const e = T ? Math.hypot(n.x - T.x, n.y - T.y) / UNIT : 0;
+    h[n.id] = heur === 'zero' ? 0 : heur === 'over' ? Math.round(3 * e) : Math.floor(e);
+  });
+  return h;
+}
+
+/* ---------- step recording ---------- */
+function recorder(extra) {
+  const st = Object.assign({line: [], msg: '', exam: null, cur: null, ns: {}, es: {}, d: {}, par: {}, path: null, pick: null}, extra);
+  const out = [];
+  return {st, out, snap(line, msg, pick = null) {
+    st.line = [].concat(line); st.msg = msg; st.pick = pick;
+    out.push(JSON.parse(JSON.stringify(st)));
+  }};
+}
+function attachAsks(out) {
+  out.forEach(s => { if (s.pick && !s.pick.noAsk) s.ask = s.pick; });
+  return out;
+}
+function pathTo(st, t) {
+  if (st.d[t] === null || st.d[t] === undefined) return null;
+  const p = [t];
+  while (st.par[p[0]] && p.length <= G.nodes.length) p.unshift(st.par[p[0]]);
+  return p;
+}
+function markPath(st, t) {
+  const p = pathTo(st, t);
+  st.path = p;
+  if (p) for (let i = 1; i < p.length; i++) st.es[ek(p[i - 1], p[i])] = 'path';
+}
+const distList = st => labels().map(v => `${v} = ${fmt(st.d[v])}`).join(', ');
+
+function genDijkstra(s) {
+  const L = labels(), r = recorder({inS: {}, pq: [], count: 0, broken: false}), st = r.st;
+  L.forEach(x => { st.d[x] = null; st.par[x] = null; });
+  st.d[s] = 0; st.ns[s] = 'frontier';
+  const D = x => st.d[x] === null ? Infinity : st.d[x];
+  const Q = () => L.filter(x => !st.inS[x]).sort((a, b) => (D(a) - D(b)) || (a < b ? -1 : 1)).map(x => ({n: x, k: st.d[x]}));
+  st.pq = Q();
+  r.snap([1, 2], `Initialize: ${s}.d = 0, every other vertex has d = ∞ and π = NIL. S is empty and Q holds all ${L.length} vertices.`);
+  while (L.some(x => !st.inS[x])) {
+    const u = Q()[0].n;
+    if (st.d[u] === null) {
+      st.cur = null; st.exam = null;
+      r.snap(3, `Every vertex left in Q has d = ∞, so none of them is reachable from ${s}. Their distances stay ∞.`);
+      break;
+    }
+    st.inS[u] = true; st.count++; st.ns[u] = 'current'; st.cur = u; st.exam = st.par[u] ? ek(st.par[u], u) : null; st.pq = Q();
+    r.snap([3, 4], `Extract ${u}: it has the smallest d in Q (${st.d[u]}). Add it to S, so ${u}.d = ${st.d[u]} is now final.`, {type: 'node', val: u, noAsk: u === s});
+    const nb = out(u);
+    if (!nb.length) r.snap(5, `${u} has no outgoing edges.`);
+    for (const {v, w} of nb) {
+      const k = ek(u, v), nd = st.d[u] + w;
+      st.exam = k;
+      if (st.inS[v]) {
+        if (nd < D(v)) {
+          st.broken = true; st.es[k] = 'warn';
+          r.snap([5, 6, 8], `Edge ${u}→${v}: ${st.d[u]} + ${wtxt(w)} = ${nd} is smaller than ${v}.d = ${st.d[v]}, but ${v} is already in S, so Dijkstra never changes it. The negative edge broke Dijkstra’s greedy assumption.`);
+        } else {
+          r.snap([5, 6], `Edge ${u}→${v}: ${v} is already in S (final). Nothing to do.`);
+        }
+        continue;
+      }
+      if (nd < D(v)) {
+        const old = st.d[v];
+        if (st.par[v]) st.es[ek(st.par[v], v)] = 'seen';
+        st.d[v] = nd; st.par[v] = u; st.es[k] = 'tree'; st.ns[v] = 'frontier'; st.pq = Q();
+        r.snap([5, 6, 8, 9], `Relax ${u}→${v}: ${st.d[u]} + ${wtxt(w)} = ${nd} < ${v}.d = ${fmt(old)}. Set ${v}.d = ${nd} and ${v}.π = ${u}.`);
+      } else {
+        if (!st.es[k]) st.es[k] = 'seen';
+        r.snap([5, 6, 8], `Relax ${u}→${v}: ${st.d[u]} + ${wtxt(w)} = ${nd} is not smaller than ${v}.d = ${st.d[v]}. No change.`);
+      }
+    }
+    st.exam = null; st.ns[u] = 'done'; st.cur = null;
+    const q = Q();
+    r.snap(3, q.length ? `Done with ${u}. The smallest d left in Q belongs to ${q[0].n} (${fmt(q[0].k)}).` : `Done with ${u}. Q is empty.`);
+  }
+  st.exam = null; st.cur = null; markPath(st, dst);
+  r.snap(3, `Dijkstra is done. Distances from ${s}: ${distList(st)}.${st.broken ? ' Warning: a negative edge reached a vertex that was already final, so some of these distances are wrong. Compare with Bellman-Ford.' : ''}`);
+  return attachAsks(r.out);
+}
+
+function findCycle(st, v) {
+  let x = v;
+  for (let i = 0; i < G.nodes.length; i++) { if (!st.par[x]) return null; x = st.par[x]; }
+  const cyc = [x];
+  let y = st.par[x];
+  while (y && y !== x && cyc.length <= G.nodes.length) { cyc.unshift(y); y = st.par[y]; }
+  cyc.unshift(x);
+  return cyc;
+}
+
+function genBF(s) {
+  const L = labels(), E = edgeList(), passes = Math.max(L.length - 1, 0);
+  const r = recorder({pass: 0, ei: -1, estat: {}, neg: false, edges: E}), st = r.st;
+  L.forEach(x => { st.d[x] = null; st.par[x] = null; });
+  st.d[s] = 0; st.ns[s] = 'frontier';
+  const D = x => st.d[x] === null ? Infinity : st.d[x];
+  r.snap(1, `Initialize: ${s}.d = 0, every other vertex has d = ∞. Bellman-Ford will relax all ${E.length} edges in the list, ${passes} times (|V| − 1 passes).`);
+  for (let i = 1; i <= passes; i++) {
+    st.pass = i; st.estat = {};
+    let changes = 0;
+    E.forEach((e, j) => {
+      st.ei = j; st.exam = e.k;
+      if (st.d[e.u] === null) {
+        st.estat[j] = 'skip';
+        r.snap([3, 4, 10], `Pass ${i}, edge (${e.u}, ${e.v}): ${e.u}.d = ∞, so this edge can’t improve anything yet.`);
+        return;
+      }
+      const nd = st.d[e.u] + e.w;
+      if (nd < D(e.v)) {
+        const old = st.d[e.v];
+        if (st.par[e.v]) st.es[ek(st.par[e.v], e.v)] = 'seen';
+        st.d[e.v] = nd; st.par[e.v] = e.u; st.es[e.k] = 'tree'; st.ns[e.v] = 'frontier';
+        st.estat[j] = 'upd'; changes++;
+        r.snap([3, 4, 10, 11], `Pass ${i}, edge (${e.u}, ${e.v}): ${st.d[e.u]} + ${wtxt(e.w)} = ${nd} < ${e.v}.d = ${fmt(old)}. Set ${e.v}.d = ${nd} and ${e.v}.π = ${e.u}.`);
+      } else {
+        st.estat[j] = 'same';
+        r.snap([3, 4, 10], `Pass ${i}, edge (${e.u}, ${e.v}): ${st.d[e.u]} + ${wtxt(e.w)} = ${nd} is not smaller than ${e.v}.d = ${st.d[e.v]}. No change.`);
+      }
+    });
+    st.exam = null; st.ei = -1;
+    r.snap(2, `Pass ${i} of ${passes} is done, with ${changes} update${changes === 1 ? '' : 's'}.${changes === 0 ? ' Nothing changed, so later passes can’t change anything either. An optimized version could stop here.' : ''}`);
+  }
+  st.pass = 'check'; st.estat = {};
+  for (let j = 0; j < E.length; j++) {
+    const e = E[j];
+    st.ei = j; st.exam = e.k;
+    if (st.d[e.u] !== null && st.d[e.u] + e.w < D(e.v)) {
+      st.estat[j] = 'bad'; st.neg = true;
+      const cyc = findCycle(st, e.v);
+      if (cyc) for (let i = 1; i < cyc.length; i++) st.es[ek(cyc[i - 1], cyc[i])] = 'neg';
+      st.es[e.k] = 'neg';
+      r.snap([5, 6, 7], `Check edge (${e.u}, ${e.v}): ${st.d[e.u]} + ${wtxt(e.w)} = ${st.d[e.u] + e.w} is still smaller than ${e.v}.d = ${st.d[e.v]}. After |V| − 1 passes this can only happen if a negative-weight cycle is reachable from ${s}${cyc ? ` (${cyc.join(' → ')})` : ''}. Return FALSE: shortest paths are not defined.`);
+      break;
+    }
+    st.estat[j] = 'ok';
+    r.snap([5, 6], `Check edge (${e.u}, ${e.v}): it can’t be relaxed any further.`);
+  }
+  if (!st.neg) {
+    st.exam = null; st.ei = -1; markPath(st, dst);
+    L.forEach(x => { if (st.d[x] !== null) st.ns[x] = 'done'; });
+    r.snap(8, `No edge can be relaxed any further, so there is no negative cycle reachable from ${s}. Return TRUE. Distances from ${s}: ${distList(st)}.`);
+  }
+  return r.out;
+}
+
+function genAstar(s, t) {
+  const L = labels(), h = hvals(t);
+  const r = recorder({closed: {}, open: {}, pq: [], h, count: 0, found: false}), st = r.st;
+  L.forEach(x => { st.d[x] = null; st.par[x] = null; });
+  st.d[s] = 0; st.open[s] = true; st.ns[s] = 'frontier';
+  const D = x => st.d[x] === null ? Infinity : st.d[x];
+  const F = x => D(x) + h[x];
+  const Q = () => L.filter(x => st.open[x]).sort((a, b) => (F(a) - F(b)) || (h[a] - h[b]) || (a < b ? -1 : 1)).map(x => ({n: x, k: st.d[x] + h[x]}));
+  st.pq = Q();
+  r.snap([1, 2], `Initialize: ${s}.d = 0 and OPEN holds only ${s}. h(v) estimates the distance still to go from v to ${t}. A* always expands the open vertex with the smallest f(v) = v.d + h(v).`);
+  while (L.some(x => st.open[x])) {
+    const u = Q()[0].n;
+    delete st.open[u]; st.count++; st.ns[u] = 'current'; st.cur = u; st.exam = st.par[u] ? ek(st.par[u], u) : null; st.pq = Q();
+    const f = `f = ${st.d[u]} + ${h[u]} = ${st.d[u] + h[u]}`;
+    if (u === t) {
+      st.found = true; st.ns[u] = 'done'; st.exam = null; st.cur = null; markPath(st, t);
+      r.snap([3, 4, 5], `Extract ${t} (${f}). It is the target, so stop. The shortest distance is ${t}.d = ${st.d[t]}. A* expanded ${st.count} vertices.`, {type: 'node', val: u, noAsk: u === s});
+      break;
+    }
+    st.closed[u] = true;
+    r.snap([3, 4, 6], `Extract ${u}: it has the smallest f in OPEN (${f}). Move it to CLOSED.`, {type: 'node', val: u, noAsk: u === s});
+    for (const {v, w} of out(u)) {
+      const k = ek(u, v), nd = st.d[u] + w;
+      st.exam = k;
+      if (st.closed[v]) { r.snap(7, `Edge ${u}→${v}: ${v} is in CLOSED. Skip.`); continue; }
+      if (nd < D(v)) {
+        const old = st.d[v];
+        if (st.par[v]) st.es[ek(st.par[v], v)] = 'seen';
+        st.d[v] = nd; st.par[v] = u; st.open[v] = true; st.es[k] = 'tree'; st.ns[v] = 'frontier'; st.pq = Q();
+        r.snap([7, 8, 9, 10], `Edge ${u}→${v}: ${st.d[u]} + ${wtxt(w)} = ${nd} < ${v}.d = ${fmt(old)}. Set ${v}.d = ${nd}, ${v}.π = ${u}, so f(${v}) = ${nd} + ${h[v]} = ${nd + h[v]}.`);
+      } else {
+        if (!st.es[k]) st.es[k] = 'seen';
+        r.snap([7, 8], `Edge ${u}→${v}: ${st.d[u]} + ${wtxt(w)} = ${nd} is not smaller than ${v}.d = ${st.d[v]}. No change.`);
+      }
+    }
+    st.exam = null; st.ns[u] = 'done'; st.cur = null;
+    const q = Q();
+    r.snap(3, q.length ? `Done with ${u}. The smallest f in OPEN now belongs to ${q[0].n} (${q[0].k}).` : `Done with ${u}. OPEN is empty.`);
+  }
+  if (!st.found) r.snap(3, `OPEN is empty and ${t} was never reached: there is no path from ${s} to ${t}.`);
+  return attachAsks(r.out);
+}
+const generate = () => algo === 'dijkstra' ? genDijkstra(src) : algo === 'bf' ? genBF(src) : genAstar(src, dst);
+
+const CODE = {
+  dijkstra: ['DIJKSTRA(G, w, s):', '  INIT-SINGLE-SOURCE(G, s)   ▸ v.d = ∞, v.π = NIL; s.d = 0', '  S ← ∅; Q ← G.V             ▸ min-priority queue on v.d', '  while Q ≠ ∅:', '    u ← EXTRACT-MIN(Q); S ← S ∪ {u}', '    for each vertex v in G.Adj[u]:', '      RELAX(u, v, w)', 'RELAX(u, v, w):', '  if v.d > u.d + w(u, v):', '    v.d ← u.d + w(u, v); v.π ← u'],
+  bf: ['BELLMAN-FORD(G, w, s):', '  INIT-SINGLE-SOURCE(G, s)', '  for i ← 1 to |G.V| − 1:', '    for each edge (u, v) ∈ G.E:', '      RELAX(u, v, w)', '  for each edge (u, v) ∈ G.E:', '    if v.d > u.d + w(u, v):', '      return FALSE            ▸ negative cycle', '  return TRUE', 'RELAX(u, v, w):', '  if v.d > u.d + w(u, v):', '    v.d ← u.d + w(u, v); v.π ← u'],
+  astar: ['A*(G, w, s, t, h):', '  INIT-SINGLE-SOURCE(G, s)', '  OPEN ← {s}; CLOSED ← ∅     ▸ OPEN keyed by f(v) = v.d + h(v)', '  while OPEN ≠ ∅:', '    u ← EXTRACT-MIN(OPEN)      ▸ smallest f', '    if u = t: return v.d, v.π  ▸ target reached', '    CLOSED ← CLOSED ∪ {u}', '    for each v in G.Adj[u], v ∉ CLOSED:', '      if v.d > u.d + w(u, v):', '        v.d ← u.d + w(u, v); v.π ← u', '        add v to OPEN (or update its f)'],
+};
+
+/* ---------- warnings ---------- */
+function warnings() {
+  const out = [];
+  const neg = G.edges.filter(e => e.w < 0);
+  if (neg.length && algo !== 'bf') out.push(`This graph has negative edge weights (${neg.map(e => `${ek(e.u, e.v)} = ${e.w}`).join(', ')}). ${algo === 'dijkstra' ? 'Dijkstra' : 'A*'} may give wrong distances. Bellman-Ford handles them.`);
+  if (neg.length && !G.directed) out.push('An undirected edge with a negative weight is a negative cycle by itself (go back and forth), so no algorithm can find shortest paths here.');
+  if (algo === 'astar' && node(dst)) {
+    const h = hvals(dst), bad = [];
+    for (const e of edgeList()) if (h[e.u] > e.w + h[e.v]) bad.push(`${e.u}→${e.v}: h(${e.u}) = ${h[e.u]} > ${e.w} + h(${e.v}) = ${e.w + h[e.v]}`);
+    if (bad.length) out.push(`The heuristic is not consistent on ${bad.length} edge${bad.length > 1 ? 's' : ''} (${bad.slice(0, 3).join('; ')}${bad.length > 3 ? '; …' : ''}). It may overestimate the remaining distance, so A* can return a path that is not the shortest.`);
+  }
+  $('#warn').innerHTML = out.map(t => `<p>⚠ ${t}</p>`).join('');
+  $('#warn').hidden = !out.length;
+}
+
+/* ---------- recompute / playback ---------- */
+function graphChanged() {
+  stop(); awaiting = false;
+  G.directed = !$('#undirected').checked;
+  if (!node(src)) src = labels()[0] || 'A';
+  if (!node(dst)) dst = labels().at(-1) || 'A';
+  steps = G.nodes.length ? generate() : [];
+  idx = 0;
+  const opts = sel => labels().map(l => `<option ${l === sel ? 'selected' : ''}>${l}</option>`).join('');
+  $('#src').innerHTML = opts(src); $('#dst').innerHTML = opts(dst);
+  $('#scrub').max = Math.max(0, steps.length - 1);
+  warnings(); renderAnswers(); render();
+}
+function setAlgo(v) {
+  algo = v;
+  $('#algo').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x.dataset.v === v));
+}
+function go(i) {
+  if (!steps.length) return;
+  awaiting = false; $('#fb').textContent = ''; $('#fb').className = 'fb';
+  idx = clamp(i, 0, steps.length - 1);
+  render();
+}
+function next() {
+  if (!steps.length || idx >= steps.length - 1) { stop(); return false; }
+  if (predict && algo !== 'bf' && steps[idx + 1].ask && !awaiting) {
+    awaiting = true; score.missed = false; stop();
+    $('#fb').textContent = ''; render(); return false;
+  }
+  if (awaiting) return false;
+  idx++; $('#fb').textContent = ''; render(); return true;
+}
+function checkPrediction(val) {
+  const want = steps[idx + 1].ask.val;
+  if (val === want) {
+    score.total++; if (!score.missed) score.first++;
+    awaiting = false; idx++;
+    $('#fb').className = 'fb ok'; $('#fb').textContent = `Correct: ${val} is extracted next.`;
+    render(); return;
+  }
+  score.missed = true;
+  $('#fb').className = 'fb no';
+  $('#fb').textContent = algo === 'dijkstra' ? `Not ${val}. Which vertex still in Q has the smallest d?` : `Not ${val}. Which vertex in OPEN has the smallest f = d + h?`;
+  const el = document.querySelector(`[data-node="${val}"]`);
+  if (el) { el.classList.remove('wrong'); void el.getBBox(); el.classList.add('wrong'); }
+}
+function speedMs() { return 1600 / Math.pow(1.45, +$('#speed').value - 1); }
+function play() {
+  if (timer) { stop(); return; }
+  if (idx >= steps.length - 1) idx = 0;
+  const tick = () => { if (next()) timer = setTimeout(tick, speedMs()); else stop(); };
+  timer = setTimeout(tick, 0);
+  $('#b-play').textContent = '❚❚ Pause';
+}
+function stop() { clearTimeout(timer); timer = null; $('#b-play').textContent = '▶ Play'; }
+
+/* ---------- rendering ---------- */
+const svg = $('#graph');
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+$('#defs').innerHTML = ['idle', 'seen', 'tree', 'exam', 'path', 'neg', 'warn'].map(c =>
+  `<marker id="arr-${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto"><path class="m-${c}" d="M0 0 L10 5 L0 10 z"/></marker>`).join('');
+
+// Straight edge; a two-way pair of directed edges bends apart; an edge that would cross a vertex curves around it.
+function edgeGeom(e) {
+  const a = node(e.u), b = node(e.v), dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1;
+  const px = -dy / L, py = dx / L;
+  let qx = (a.x + b.x) / 2, qy = (a.y + b.y) / 2, bent = false;
+  if (G.directed && G.edges.some(f => f.u === e.v && f.v === e.u)) {
+    qx += px * 40; qy += py * 40; bent = true;
+  } else if (G.nodes.some(n => {
+    if (n === a || n === b) return false;
+    const t = ((n.x - a.x) * dx + (n.y - a.y) * dy) / (L * L);
+    return t > 0 && t < 1 && Math.hypot(a.x + t * dx - n.x, a.y + t * dy - n.y) < R + 6;
+  })) {
+    const cx = G.nodes.reduce((s, n) => s + n.x, 0) / G.nodes.length, cy = G.nodes.reduce((s, n) => s + n.y, 0) / G.nodes.length;
+    const sgn = ((qx - cx) * px + (qy - cy) * py) < 0 ? -1 : 1, off = clamp(L * 0.4, 50, 150);
+    qx += sgn * px * off; qy += sgn * py * off; bent = true;
+  }
+  const unit = (x, y) => { const l = Math.hypot(x, y) || 1; return [x / l, y / l]; };
+  const [ax, ay] = unit(qx - a.x, qy - a.y), [bx, by] = unit(qx - b.x, qy - b.y);
+  const endR = R + (G.directed ? 3 : 0);
+  const sx = a.x + ax * R, sy = a.y + ay * R, ex = b.x + bx * endR, ey = b.y + by * endR;
+  return bent
+    ? {d: `M${sx} ${sy} Q${qx} ${qy} ${ex} ${ey}`, mx: (sx + 2 * qx + ex) / 4, my: (sy + 2 * qy + ey) / 4}
+    : {d: `M${sx} ${sy} L${ex} ${ey}`, mx: (sx + ex) / 2, my: (sy + ey) / 2};
+}
+
+function render() {
+  const S = steps[idx];
+  svg.setAttribute('class', `mode-${mode}${awaiting ? ' awaiting' : ''}`);
+  let eh = '', wh = '';
+  for (const e of G.edges) {
+    const k = ek(e.u, e.v), g = edgeGeom(e);
+    let cls = S?.es[k] || 'idle';
+    if (S?.exam === k && cls !== 'neg') cls = 'exam';
+    eh += `<g data-edge="${k}"><path class="hit" d="${g.d}"/><path class="edge ${cls}" d="${g.d}"${G.directed ? ` marker-end="url(#arr-${cls})"` : ''}/></g>`;
+    const bw = 16 + 9 * String(e.w).length;
+    wh += `<g class="wl ${cls}${e.w < 0 ? ' negw' : ''}${editing === k ? ' editing' : ''}" data-edge="${k}" transform="translate(${g.mx},${g.my})"><rect x="${-bw / 2}" y="-13" width="${bw}" height="26" rx="6"/><text dy="0.36em">${e.w}</text></g>`;
+  }
+  $('#edges').innerHTML = eh;
+  $('#wlabels').innerHTML = wh;
+  let nh = '';
+  for (const n of G.nodes) {
+    const st = S?.ns[n.id] || 'idle';
+    let sub = '';
+    if (S) sub = algo === 'astar' ? `g ${fmt(S.d[n.id])} · h ${S.h[n.id]}` : `d ${fmt(S.d[n.id])}`;
+    nh += `<g class="node st-${st}${S?.cur === n.id ? ' is-current' : ''}${n.id === src ? ' is-start' : ''}${n.id === dst ? ' is-target' : ''}${pendingEdge === n.id ? ' pending' : ''}" data-node="${n.id}" transform="translate(${n.x},${n.y})">
+      <circle class="halo" r="${R + 7}"/><circle class="body" r="${R}"/><text class="lbl" dy="0.36em">${n.id}</text>
+      ${sub ? `<text class="sub" y="${R + 17}">${sub}</text>` : ''}</g>`;
+  }
+  if (!G.nodes.length) nh = `<text class="empty-msg" x="400" y="260">Choose “Add node” and click here to place nodes</text>`;
+  $('#nodes').innerHTML = nh;
+
+  // narration + playback state
+  $('#now').classList.toggle('ask', awaiting);
+  $('#now-title').textContent = awaiting ? 'Your turn' : 'What’s happening';
+  $('#msg').textContent = awaiting
+    ? (algo === 'dijkstra' ? 'Which vertex will Dijkstra extract from Q next? Click it on the graph.' : 'Which vertex will A* extract from OPEN next? Click it on the graph.')
+    : S ? S.msg : 'Add some nodes and edges to start.';
+  $('#counter').textContent = steps.length ? `Step ${idx + 1} / ${steps.length}` : 'No steps';
+  $('#scrub').value = idx;
+  $('#b-prev').disabled = $('#b-reset').disabled = idx === 0;
+  $('#b-next').disabled = $('#b-end').disabled = idx >= steps.length - 1;
+  $('#predict').disabled = algo === 'bf';
+  $('#predict-note').textContent = algo === 'bf' ? 'Predict mode works with Dijkstra and A*.' : 'Before each vertex is extracted, you click the vertex you think comes next.';
+  $('#score').textContent = predict && algo !== 'bf' ? `First-try correct: ${score.first} / ${score.total}` : '';
+  $('#heur-field').hidden = algo !== 'astar';
+  $('#lg-f').textContent = algo === 'astar' ? 'in OPEN' : algo === 'bf' ? 'd known' : 'in Q, d known';
+  $('#lg-d').textContent = algo === 'astar' ? 'in CLOSED' : algo === 'bf' ? 'final' : 'final (in S)';
+
+  // path to target
+  const p = S ? pathTo(S, dst) : null, done = idx === steps.length - 1;
+  $('#path-title').textContent = `Path from ${src} to ${dst}${S && !done ? ' (best so far)' : ''}`;
+  if (!S) $('#path').innerHTML = '';
+  else if (S.neg) $('#path').innerHTML = `<span class="muted">Not defined: a negative cycle is reachable from ${src}.</span>`;
+  else if (!p) $('#path').innerHTML = `<span class="muted">${done ? `${dst} is not reachable from ${src}.` : `${dst}.d = ∞ so far.`}</span>`;
+  else $('#path').innerHTML = `<div class="tree-sum"><span class="total">${S.d[dst]}</span><span class="muted">total weight</span></div><div class="ds">${p.map((v, i) => `${i ? '<span class="arrow">→</span>' : ''}<span class="chip pathv">${v}</span>`).join('')}</div>`;
+
+  // main data structure
+  if (algo === 'bf') {
+    $('#ds-title').textContent = !S || !S.pass ? 'Edge list (relaxed in this order)' : S.pass === 'check' ? 'Edge list: negative-cycle check' : `Edge list: pass ${S.pass} of ${G.nodes.length - 1}`;
+    const tag = {upd: 'updated', same: 'no change', skip: 'u.d = ∞', ok: 'OK', bad: 'can still relax!'};
+    const E = S?.edges || edgeList();
+    $('#ds').innerHTML = `<div class="elist" id="elist">${E.map((e, j) => `<div class="erow ${S?.estat[j] || ''}${S?.ei === j ? ' cur' : ''}"><span class="ek">(${e.u}, ${e.v})</span><span class="ew">${e.w}</span><span class="es">${S ? tag[S.estat[j]] || '' : ''}</span></div>`).join('')}</div>`;
+    const list = $('#elist'), c = list?.querySelector('.cur');
+    if (c && (c.offsetTop < list.scrollTop || c.offsetTop + c.offsetHeight > list.scrollTop + list.clientHeight)) list.scrollTop = c.offsetTop - list.clientHeight / 2;
+  } else {
+    $('#ds-title').textContent = algo === 'dijkstra' ? 'Priority queue Q (smallest d first)' : 'OPEN (smallest f = d + h first)';
+    const q = S?.pq || [];
+    $('#ds').innerHTML = `<div class="ds">${q.length ? `<span class="end">min</span>` + q.map((it, i) => `<span class="chip${it.k === null ? ' inf' : ''}${i === 0 ? ' hot' : ''}">${it.n}<em>${algo === 'astar' ? 'f ' : ''}${fmt(it.k)}</em></span>`).join('') : '<span class="muted">empty</span>'}</div>`;
+  }
+
+  // distance table
+  const L = labels();
+  const cols = algo === 'astar' ? ['vertex', 'd', 'h', 'f', 'π', 'closed'] : algo === 'dijkstra' ? ['vertex', 'd', 'π', 'in S'] : ['vertex', 'd', 'π'];
+  const val = (v, c) => {
+    if (c === 'vertex') return v;
+    if (!S) return '·';
+    if (c === 'd') return fmt(S.d[v]);
+    if (c === 'π') return S.par[v] ?? 'NIL';
+    if (c === 'h') return S.h[v];
+    if (c === 'f') return S.d[v] === null ? '∞' : S.d[v] + S.h[v];
+    if (c === 'in S') return S.inS[v] ? '✓' : '';
+    if (c === 'closed') return S.closed[v] || (S.found && v === dst) ? '✓' : '';
+  };
+  $('#tbl').innerHTML = `<tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>` + L.map(v => `<tr class="${S?.cur === v ? 'cur' : ''}">${cols.map(c => `<td>${val(v, c)}</td>`).join('')}</tr>`).join('');
+  $('#code').innerHTML = CODE[algo].map((l, i) => `<div class="${S && S.line.includes(i) ? 'on' : ''}">${esc(l)}</div>`).join('');
+
+  const hints = {move: 'Drag nodes to rearrange. Click a node to make it the source. Click a weight to change it.',
+    node: 'Click empty space to add a node.',
+    edge: pendingEdge ? `Now click the node the edge goes to from ${pendingEdge}.` : 'Click the start node, then the end node.',
+    weight: 'Click an edge or its weight, type a number (negative is allowed), press Enter.',
+    delete: 'Click a node or an edge to remove it.'};
+  $('#hint').textContent = awaiting ? 'Click the vertex you predict.' : hints[mode];
+}
+
+function renderAnswers() {
+  if (!G.nodes.length) { $('#ans').innerHTML = '<span class="muted">No graph yet.</span>'; return; }
+  const dj = genDijkstra(src).at(-1), bf = genBF(src).at(-1);
+  const bfTxt = bf.neg ? 'a negative cycle is reachable, so shortest paths are not defined' : distList(bf);
+  const differ = !bf.neg && labels().some(v => dj.d[v] !== bf.d[v]);
+  let html = `<div><b>Dijkstra from ${src}:</b> ${distList(dj)}</div><div><b>Bellman-Ford from ${src}:</b> ${bfTxt}</div>`;
+  if (differ) html += `<span class="muted">The two disagree because of a negative edge. Bellman-Ford’s distances are the correct ones.</span>`;
+  if (node(dst)) {
+    const as = genAstar(src, dst).at(-1);
+    let djCount = 0;
+    for (const s of genDijkstra(src)) { if (s.pick && s.pick.val === dst) { djCount = s.inS ? Object.keys(s.inS).length : 0; break; } }
+    html += as.found
+      ? `<div><b>A* from ${src} to ${dst}</b> (${$('#heur').selectedOptions[0].text}): ${pathTo(as, dst).join(' → ')}, distance ${as.d[dst]}. It expanded ${as.count} vertices${djCount ? `; Dijkstra expands ${djCount} before it extracts ${dst}` : ''}.</div>`
+      : `<div><b>A* from ${src} to ${dst}:</b> no path.</div>`;
+  }
+  html += `<span class="muted">Ties are broken alphabetically. Bellman-Ford relaxes edges in the order of the edge list.</span>`;
+  $('#ans').innerHTML = html;
+}
+let hintTimer;
+function flashHint(t) { $('#hint').textContent = t; clearTimeout(hintTimer); hintTimer = setTimeout(render, 1800); }
+
+/* ---------- weight editor ---------- */
+const wedit = $('#wedit');
+function openEditor(k) {
+  const e = edgeByKey(k); if (!e) return;
+  stop(); editing = k;
+  const g = edgeGeom(e), p = svg.createSVGPoint();
+  p.x = g.mx; p.y = g.my;
+  const sp = p.matrixTransform(svg.getScreenCTM()), box = $('.stage').getBoundingClientRect();
+  wedit.style.left = (sp.x - box.left) + 'px'; wedit.style.top = (sp.y - box.top) + 'px';
+  wedit.value = e.w; wedit.hidden = false; wedit.focus(); wedit.select();
+  render();
+}
+function closeEditor(save) {
+  if (!editing) return;
+  const e = edgeByKey(editing); editing = null; wedit.hidden = true;
+  if (save && e) {
+    const v = Math.round(+wedit.value);
+    if (wedit.value !== '' && v >= -99 && v <= 99) e.w = v; else flashHint('Weights must be whole numbers from −99 to 99.');
+  }
+  graphChanged();
+}
+wedit.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); closeEditor(true); }
+  else if (e.key === 'Escape') closeEditor(false);
+});
+wedit.addEventListener('blur', () => closeEditor(true));
+
+/* ---------- pointer interaction ---------- */
+function pt(e) {
+  const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+svg.addEventListener('pointerdown', e => {
+  const p = pt(e);
+  const nEl = e.target.closest('[data-node]'), eEl = e.target.closest('[data-edge]');
+  if (awaiting) { if (nEl) checkPrediction(nEl.dataset.node); return; }
+  if (nEl) {
+    const id = nEl.dataset.node;
+    if (mode === 'delete') { removeNode(id); return; }
+    if (mode === 'edge') {
+      if (!pendingEdge) { pendingEdge = id; render(); }
+      else { const a = pendingEdge; pendingEdge = null; $('#rubber').setAttribute('visibility', 'hidden'); addEdge(a, id); }
+      return;
+    }
+    const n = node(id);
+    drag = {id, ox: p.x - n.x, oy: p.y - n.y, sx: p.x, sy: p.y, moved: false};
+    svg.setPointerCapture(e.pointerId);
+    return;
+  }
+  if (eEl) {
+    const k = eEl.dataset.edge;
+    if (mode === 'delete') { removeEdge(k); return; }
+    if (mode === 'weight' || (mode === 'move' && e.target.closest('.wl'))) { setTimeout(() => openEditor(k), 0); return; }
+  }
+  if (mode === 'node') { addNode(p.x, p.y); return; }
+  if (mode === 'edge' && pendingEdge) { pendingEdge = null; $('#rubber').setAttribute('visibility', 'hidden'); render(); }
+});
+svg.addEventListener('pointermove', e => {
+  const p = pt(e);
+  if (drag) {
+    if (Math.hypot(p.x - drag.sx, p.y - drag.sy) > 4) drag.moved = true;
+    if (drag.moved) { const n = node(drag.id); n.x = clamp(p.x - drag.ox, R + 4, W - R - 4); n.y = clamp(p.y - drag.oy, R + 4, H - R - 22); render(); }
+  } else if (mode === 'edge' && pendingEdge) {
+    const a = node(pendingEdge), r = $('#rubber');
+    r.setAttribute('x1', a.x); r.setAttribute('y1', a.y); r.setAttribute('x2', p.x); r.setAttribute('y2', p.y); r.setAttribute('visibility', 'visible');
+  }
+});
+svg.addEventListener('pointerup', () => {
+  if (drag) {
+    if (!drag.moved && mode === 'move' && drag.id !== src) { src = drag.id; graphChanged(); }
+    else if (drag.moved && algo === 'astar') graphChanged();  // h(v) depends on where the vertices are
+  }
+  drag = null;
+});
+
+/* ---------- controls ---------- */
+function bindSeg(sel, fn) {
+  $(sel).addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    $(sel).querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    fn(b.dataset.v);
+  });
+}
+bindSeg('#algo', v => { algo = v; graphChanged(); });
+bindSeg('#mode', v => { mode = v; pendingEdge = null; $('#rubber').setAttribute('visibility', 'hidden'); render(); });
+$('#preset').innerHTML = Object.entries(PRESETS).map(([k, p]) => `<option value="${k}">${p.name}</option>`).join('');
+$('#preset').addEventListener('change', e => loadPreset(e.target.value));
+$('#src').addEventListener('change', e => { src = e.target.value; graphChanged(); });
+$('#dst').addEventListener('change', e => { dst = e.target.value; graphChanged(); });
+$('#heur').addEventListener('change', e => { heur = e.target.value; graphChanged(); });
+$('#undirected').addEventListener('change', graphChanged);
+$('#clear').addEventListener('click', () => { G.nodes = []; G.edges = []; $('#preset').value = 'empty'; mode = 'node';
+  $('#mode').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x.dataset.v === 'node')); graphChanged(); });
+$('#b-reset').addEventListener('click', () => { stop(); go(0); });
+$('#b-prev').addEventListener('click', () => { stop(); go(idx - 1); });
+$('#b-next').addEventListener('click', () => { stop(); next(); });
+$('#b-end').addEventListener('click', () => { stop(); go(steps.length - 1); });
+$('#b-play').addEventListener('click', play);
+$('#scrub').addEventListener('input', e => { stop(); go(+e.target.value); });
+$('#predict').addEventListener('change', e => { predict = e.target.checked; score = {first: 0, total: 0, missed: false}; awaiting = false; render(); });
+document.addEventListener('keydown', e => {
+  if (e.target.closest('select, input:not([type=checkbox])')) return;
+  if (e.key === 'ArrowRight') { e.preventDefault(); stop(); next(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); stop(); go(idx - 1); }
+  else if (e.key === 'Home') { stop(); go(0); }
+  else if (e.key === 'End') { stop(); go(steps.length - 1); }
+  else if (e.key === ' ' && !e.target.closest('button')) { e.preventDefault(); play(); }
+});
+
+loadPreset('dijkstra');
+</script>
+</body>
+</html>
