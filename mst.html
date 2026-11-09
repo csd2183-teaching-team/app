@@ -344,9 +344,9 @@ const TOPICS = [
   {id:'mst', name:'Minimum Spanning Trees', href:'mst.html'},
   {id:'paths', name:'Shortest Paths', href:'shortest-paths.html'},
   {id:'dp', name:'Dynamic Programming'},
-  {id:'greedy', name:'Greedy Algorithms'},
+  {id:'greedy', name:'Greedy Algorithms', href:'greedy.html'},
 ];
-const THIS_WEEK = 'paths', PAGE = 'mst';
+const THIS_WEEK = 'greedy', PAGE = 'mst';
 document.getElementById('topics').innerHTML = TOPICS.map(t => {
   const tag = `<span class="tag${t.id === THIS_WEEK ? ' now' : ''}">${t.id === THIS_WEEK ? 'This week' : t.href ? 'Open' : 'Soon'}</span>`;
   return t.href

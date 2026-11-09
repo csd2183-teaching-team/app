@@ -1,0 +1,871 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Greedy Algorithms · Data Structures Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: lab bench — the graph sits on graph paper at left, instrument readouts (queue/stack, code, tables) stack at right */
+:root{
+  --paper:#f2f5f9; --panel:#ffffff; --ink:#152038; --muted:#5a6781; --line:#d6deea; --grid:#e2e8f1;
+  --accent:#2b56e0; --accent-soft:#e3eaff;
+  --frontier:#efb128; --current:#e2437a; --done:#14998a; --cross:#7b61e8;
+  --on-warm:#271c00; --on-strong:#ffffff; --node:#ffffff;
+  --display:'Bricolage Grotesque','Avenir Next',system-ui,sans-serif;
+  --body:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0e1320; --panel:#151c2c; --ink:#e4e9f4; --muted:#95a2bc; --line:#2a344c; --grid:#192135;
+  --accent:#86a2ff; --accent-soft:#1f2a4a;
+  --frontier:#f4c34e; --current:#ff6e9c; --done:#35c2ae; --cross:#a490ff;
+  --on-warm:#271c00; --on-strong:#0e1320; --node:#1b2336; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --paper:#0e1320; --panel:#151c2c; --ink:#e4e9f4; --muted:#95a2bc; --line:#2a344c; --grid:#192135;
+  --accent:#86a2ff; --accent-soft:#1f2a4a;
+  --frontier:#f4c34e; --current:#ff6e9c; --done:#35c2ae; --cross:#a490ff;
+  --on-warm:#271c00; --on-strong:#0e1320; --node:#1b2336; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* header + topic nav */
+header{display:flex;flex-direction:column;gap:12px}
+.brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.brand h1{font-size:clamp(24px,3.4vw,34px);font-weight:800}
+.brand p{margin:0;color:var(--muted)}
+.topics{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.topic{flex:none;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 14px;cursor:pointer;display:flex;gap:8px;align-items:center;white-space:nowrap}
+.topic[aria-current="page"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.topic[disabled]{cursor:default;color:var(--muted);background:transparent}
+.tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:1px 7px;border-radius:999px;border:1px solid currentColor;opacity:.85}
+.topic[aria-current="page"] .tag{background:var(--frontier);color:var(--on-warm);border-color:var(--frontier);opacity:1}
+
+.lead{display:flex;flex-direction:column;gap:4px}
+.lead h2{font-size:clamp(22px,2.6vw,28px);font-weight:800}
+.lead p{margin:0;color:var(--muted);max-width:72ch}
+
+/* main grid */
+.lab{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:980px){.lab{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+
+/* controls */
+.controls{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 11px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--panel)}
+select{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.check{display:flex;gap:6px;align-items:center;cursor:pointer;user-select:none}
+.check input{accent-color:var(--accent);width:16px;height:16px}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 12px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--panel);border-color:var(--accent);font-weight:600;min-width:84px}
+.btn:disabled{opacity:.4;cursor:default}
+
+/* canvas */
+.stage{padding:0;overflow:hidden}
+.stage-top{display:flex;flex-wrap:wrap;gap:10px 16px;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
+.hint{color:var(--muted);font-size:13px}
+#graph{display:block;width:100%;height:auto;aspect-ratio:800/520;max-width:100%;touch-action:none;
+  background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:20px 20px}
+#graph.mode-node{cursor:copy}
+#graph.mode-edge{cursor:crosshair}
+#graph.mode-delete{cursor:not-allowed}
+.node{cursor:grab}
+.node .body{fill:var(--node);stroke:var(--ink);stroke-width:2;transition:fill .2s}
+.node .lbl{font-family:var(--display);font-weight:800;font-size:17px;text-anchor:middle;fill:var(--ink);pointer-events:none}
+.node .sub{font-family:var(--mono);font-size:12px;text-anchor:middle;fill:var(--muted);pointer-events:none}
+.node .halo{fill:none;stroke:var(--ink);stroke-width:1.5;stroke-dasharray:3 4;opacity:0}
+.node.is-start .halo{opacity:.8}
+.node.st-frontier .body{fill:var(--frontier);stroke:var(--frontier)}
+.node.st-frontier .lbl{fill:var(--on-warm)}
+.node.st-current .body{fill:var(--current);stroke:var(--current)}
+.node.st-current .lbl{fill:var(--on-strong)}
+.node.st-done .body{fill:var(--done);stroke:var(--done)}
+.node.st-done .lbl{fill:var(--on-strong)}
+.node.is-current .body{stroke:var(--ink);stroke-width:3.5}
+.node.pending .body{stroke:var(--accent);stroke-width:4}
+.node.wrong .body{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.badge{fill:var(--ink)}
+.badge-t{fill:var(--paper);font-family:var(--mono);font-size:11px;font-weight:600;text-anchor:middle;pointer-events:none}
+.awaiting .node{cursor:pointer}
+.awaiting .node:hover .body{stroke:var(--accent);stroke-width:4}
+
+.edge{stroke:var(--muted);stroke-width:2.5;opacity:.6;fill:none}
+.edge.tree{stroke:var(--done);stroke-width:5;opacity:1}
+.edge.seen{stroke-dasharray:4 6;opacity:.45}
+.edge.back{stroke:var(--current);stroke-width:3;stroke-dasharray:9 6;opacity:1}
+.edge.forward,.edge.cross{stroke:var(--cross);stroke-width:3;stroke-dasharray:2 6;stroke-linecap:round;opacity:1}
+.edge.exam{stroke:var(--accent);stroke-width:6;opacity:1;stroke-dasharray:none}
+.hit{stroke:transparent;stroke-width:16;fill:none}
+.mode-delete .hit{cursor:not-allowed}
+.rubber{stroke:var(--accent);stroke-width:2;stroke-dasharray:5 5;pointer-events:none}
+.m-idle,.m-seen{fill:var(--muted)} .m-tree{fill:var(--done)} .m-back{fill:var(--current)} .m-cross,.m-forward{fill:var(--cross)} .m-exam{fill:var(--accent)}
+.empty-msg{font-family:var(--display);font-size:20px;fill:var(--muted);text-anchor:middle}
+
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;padding:10px 14px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:13px;height:13px;border-radius:50%;border:2px solid var(--ink);background:var(--node);display:inline-block}
+.dot.f{background:var(--frontier);border-color:var(--frontier)} .dot.c{background:var(--current);border-color:var(--current)} .dot.d{background:var(--done);border-color:var(--done)}
+.ln{width:22px;height:0;border-top:4px solid var(--done);display:inline-block}
+.ln.b{border-top:3px dashed var(--current)} .ln.x{border-top:3px dotted var(--cross)} .ln.e{border-top:4px solid var(--accent)}
+
+/* playback */
+.play{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.play .grp{display:flex;gap:6px;flex-wrap:wrap}
+.counter{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+input[type=range]{accent-color:var(--accent);width:110px}
+.scrub{flex:1 1 100%;width:100%}
+.predict-bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:14px}
+.score{font-family:var(--mono);font-size:13px;color:var(--muted)}
+
+/* readouts */
+.now{border-left:4px solid var(--accent)}
+.now p{margin:0;font-size:16px;min-height:3em}
+.now.ask{border-left-color:var(--current)}
+.now .fb{margin-top:6px;font-size:14px;font-weight:600;min-height:0}
+.fb.ok{color:var(--done)} .fb.no{color:var(--current)}
+.ds{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:44px;font-family:var(--mono)}
+.ds .end{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.chip{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:34px;padding:0 8px;border-radius:6px;border:2px solid var(--frontier);background:var(--frontier);color:var(--on-warm);font-weight:600;font-family:var(--mono)}
+.chip.hot{border-color:var(--ink);box-shadow:0 0 0 2px var(--panel) inset}
+.chip.stale{background:transparent;color:var(--muted);border-color:var(--line);text-decoration:line-through}
+.chip.call{background:var(--accent-soft);border-color:var(--accent);color:var(--ink);font-size:13px}
+.chip.call.hot{background:var(--current);border-color:var(--current);color:var(--on-strong)}
+.chip.ord{background:var(--done);border-color:var(--done);color:var(--on-strong);position:relative}
+.chip.ord small{position:absolute;top:-8px;right:-6px;background:var(--ink);color:var(--paper);font-size:10px;border-radius:999px;padding:0 4px;line-height:15px}
+.muted{color:var(--muted);font-size:13px}
+.code{font-family:var(--mono);font-size:13px;line-height:1.75;margin:0;overflow-x:auto;white-space:pre;counter-reset:ln}
+.code div{padding:0 8px;border-radius:4px}
+.code div::before{counter-increment:ln;content:counter(ln);display:inline-block;width:1.6em;color:var(--muted);opacity:.6}
+.code div.on{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+tr.cur td{background:var(--accent-soft)}
+.adj{font-family:var(--mono);font-size:13px;display:flex;flex-direction:column;gap:2px}
+.adj b{display:inline-block;width:1.6em}
+.adj .on{color:var(--accent);font-weight:600;text-decoration:underline}
+.adj .row.cur{background:var(--accent-soft);border-radius:4px}
+details summary{cursor:pointer;font-weight:600}
+details .ans{font-family:var(--mono);font-size:13px;margin-top:8px;display:flex;flex-direction:column;gap:4px}
+.tasks{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:8px;max-width:75ch}
+.tasks li::marker{font-family:var(--mono);color:var(--muted)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+@media (max-width:560px){.two{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+[hidden]{display:none!important}
+/* topic nav links */
+a.topic{text-decoration:none;color:inherit}
+.tag.now{background:var(--frontier);color:var(--on-warm);border-color:var(--frontier);opacity:1}
+
+/* MST page */
+.stage{position:relative}
+#wedit{position:absolute;transform:translate(-50%,-50%);width:72px;padding:4px 6px;font-family:var(--mono);font-size:15px;text-align:center;border:2px solid var(--accent);border-radius:6px;background:var(--panel);color:var(--ink);z-index:2}
+.wl{cursor:pointer}
+.wl rect{fill:var(--panel);stroke:var(--line);stroke-width:1.5}
+.wl text{font-family:var(--mono);font-size:16px;font-weight:600;text-anchor:middle;fill:var(--ink);pointer-events:none}
+.wl.tree rect{fill:var(--done);stroke:var(--done)} .wl.tree text{fill:var(--on-strong)}
+.wl.cand rect{fill:var(--frontier);stroke:var(--frontier)} .wl.cand text{fill:var(--on-warm)}
+.wl.exam rect{fill:var(--accent);stroke:var(--accent)} .wl.exam text{fill:var(--panel)}
+.wl.reject rect{stroke:var(--current)} .wl.reject text{fill:var(--current)}
+.wl.seen text{fill:var(--muted)}
+.wl.editing rect{stroke:var(--accent);stroke-width:3}
+.awaiting .wl:hover rect,.mode-weight .wl:hover rect{stroke:var(--accent);stroke-width:3}
+.edge.cand{stroke:var(--frontier);stroke-width:5;opacity:1}
+.edge.reject{stroke:var(--current);stroke-width:2.5;stroke-dasharray:3 7;stroke-linecap:round;opacity:.9}
+.awaiting [data-edge]{cursor:pointer}
+.ln.k{border-top:4px solid var(--frontier)} .ln.r{border-top:3px dotted var(--current)}
+.tree-sum{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+.total{font-family:var(--display);font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.elist{position:relative;display:flex;flex-direction:column;gap:2px;max-height:290px;overflow:auto;font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+.erow{display:grid;grid-template-columns:4em 2.5em minmax(0,1fr);gap:8px;padding:3px 8px;border-radius:4px}
+.erow .es{color:var(--muted)}
+.erow.cur{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.erow.tree .es{color:var(--done);font-weight:600}
+.erow.reject .es{color:var(--current)}
+.erow.reject .ek,.erow.reject .ew{text-decoration:line-through;color:var(--muted)}
+.erow.unused{opacity:.45}
+.sets{display:flex;flex-wrap:wrap;gap:6px;font-family:var(--mono);font-size:13px}
+.set{padding:4px 10px;border:1px solid var(--line);border-radius:999px}
+.set.hot{border-color:var(--accent);background:var(--accent-soft)}
+.chip em{font-style:normal;font-size:11px;margin-left:6px;opacity:.85}
+.chip.inf{background:transparent;border-color:var(--line);color:var(--muted)}
+
+/* Shortest paths page */
+.node.is-target .halo{opacity:1;stroke:var(--frontier);stroke-width:3.5;stroke-dasharray:none}
+.ring{width:14px;height:14px;border-radius:50%;display:inline-block;border:2px dashed var(--ink)}
+.ring.t{border:3px solid var(--frontier)}
+.ln.p{border-top:6px solid var(--frontier)}
+.edge.path{stroke:var(--frontier);stroke-width:7;opacity:1}
+.edge.neg,.edge.warn{stroke:var(--current);stroke-width:4;stroke-dasharray:8 5;opacity:1}
+.m-path{fill:var(--frontier)} .m-neg,.m-warn{fill:var(--current)}
+.wl.path rect{fill:var(--frontier);stroke:var(--frontier)} .wl.path text{fill:var(--on-warm)}
+.wl.neg rect,.wl.warn rect{fill:var(--current);stroke:var(--current)} .wl.neg text,.wl.warn text{fill:var(--on-strong)}
+.wl.negw:not(.tree):not(.path):not(.exam):not(.neg):not(.warn) text{fill:var(--current)}
+.warn{border-left:4px solid var(--current);display:flex;flex-direction:column;gap:6px}
+.warn p{margin:0}
+.arrow{color:var(--muted);font-family:var(--mono)}
+.chip.pathv{background:var(--frontier);border-color:var(--frontier);color:var(--on-warm)}
+.erow.upd .es{color:var(--done);font-weight:600}
+.erow.skip{opacity:.55}
+.erow.ok .es{color:var(--done)}
+.erow.bad{background:var(--accent-soft)} .erow.bad .es{color:var(--current);font-weight:600}
+
+/* Greedy page */
+.field.grow{flex:1 1 260px}
+.controls input[type=text],.controls input[type=number]{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-width:0;width:100%}
+.controls input[type=number]{width:7em}
+.viz-scroll{overflow-x:auto}
+#viz{display:block;height:auto}
+#viz .grid{stroke:var(--line);stroke-width:1}
+#viz .axis{font-family:var(--mono);font-size:12px;fill:var(--muted);text-anchor:middle}
+#viz .fk{stroke:var(--accent);stroke-width:2;stroke-dasharray:5 5}
+#viz .fk-t{font-family:var(--mono);font-size:12px;fill:var(--accent)}
+#viz .rowlbl{font-family:var(--display);font-weight:800;font-size:17px;fill:var(--ink);text-anchor:end;dominant-baseline:central}
+#viz .bar{transition:fill .2s}
+#viz .bar.idle{fill:var(--panel);stroke:var(--ink);stroke-width:1.5}
+#viz .bar.cur{fill:var(--accent)}
+#viz .bar.take{fill:var(--done)}
+#viz .bar.rej{fill:transparent;stroke:var(--current);stroke-width:2;stroke-dasharray:5 4}
+#viz .bar.conflict{stroke:var(--current);stroke-width:4}
+#viz .bartxt{font-family:var(--mono);font-size:12px;fill:var(--ink);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+#viz .bartxt.cur,#viz .bartxt.take{fill:var(--on-strong)}
+#viz .bartxt.cur{fill:var(--panel)}
+#viz .bartxt.rej{fill:var(--muted)}
+#viz .tedge{stroke:var(--muted);stroke-width:2}
+#viz .tedge.lab{stroke:var(--ink)}
+#viz .bit{font-family:var(--mono);font-size:14px;font-weight:600;fill:var(--accent);text-anchor:middle}
+#viz .hn rect{fill:var(--panel);stroke:var(--ink);stroke-width:2}
+#viz .hn circle{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2}
+#viz .hn.hx rect,#viz .hn.hx circle{fill:var(--current);stroke:var(--current)}
+#viz .hn.hx .hch,#viz .hn.hx .hfi{fill:var(--on-strong)}
+#viz .hn.hz circle{fill:var(--frontier);stroke:var(--frontier)}
+#viz .hn.hz .hfi{fill:var(--on-warm)}
+#viz .hch{font-family:var(--display);font-weight:800;font-size:17px;fill:var(--ink);text-anchor:middle}
+#viz .hf{font-family:var(--mono);font-size:12px;fill:var(--muted);text-anchor:middle}
+#viz .hfi{font-family:var(--mono);font-size:13px;font-weight:600;fill:var(--ink);text-anchor:middle}
+#viz .coin circle{fill:var(--frontier);stroke:var(--ink);stroke-width:1.5}
+#viz .coin text{font-family:var(--mono);font-weight:600;fill:var(--on-warm);text-anchor:middle}
+#viz .coin.big{opacity:.3}
+#viz .coin.cur circle{fill:var(--accent);stroke:var(--accent)}
+#viz .coin.cur text{fill:var(--panel)}
+#viz .cap{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;fill:var(--muted)}
+#viz .owed{font-family:var(--display);font-weight:800;font-size:46px;fill:var(--ink)}
+#viz .stuck{font-family:var(--body);font-weight:600;font-size:16px;fill:var(--current)}
+.bits{font-family:var(--mono);font-size:13px;display:flex;flex-wrap:wrap;gap:2px 7px;margin:8px 0;word-break:break-all}
+.bits span:nth-child(even){color:var(--accent)}
+table.cmp{margin-top:8px}
+.verdict{margin:10px 0 0;font-weight:600}
+.verdict.ok{color:var(--done)} .verdict.no{color:var(--current)}
+.chip.newz{border-color:var(--ink)}
+.sw{display:inline-block;width:18px;height:12px;border-radius:3px;border:1.5px solid var(--ink);background:var(--panel)}
+.sw.cur{background:var(--accent);border-color:var(--accent)} .sw.take{background:var(--done);border-color:var(--done)}
+.sw.rej{background:transparent;border:2px dashed var(--current)} .sw.conflict{border:3px solid var(--current)}
+.sw.inner{background:var(--accent-soft);border-color:var(--accent);border-radius:50%;width:14px;height:14px}
+.sw.hx{background:var(--current);border-color:var(--current)} .sw.newz{background:var(--frontier);border-color:var(--frontier);border-radius:50%;width:14px;height:14px}
+.sw.coin{background:var(--frontier);border-radius:50%;width:14px;height:14px} .sw.big{background:var(--frontier);opacity:.3;border-radius:50%;width:14px;height:14px}
+table.edit input{width:4.6em;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:3px 6px;font-family:var(--mono)}
+.btn.small{padding:2px 10px}
+.row-btns{display:flex;gap:12px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.rt{margin:8px 0 0}
+#data .erow{grid-template-columns:3em 5.5em minmax(0,1fr)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1><a href="./" style="color:inherit;text-decoration:none">Data Structures Lab</a></h1>
+      <p>Build a case, run the algorithm one step at a time, and watch the data structures change.</p>
+    </div>
+    <nav class="topics" id="topics" aria-label="Topics"></nav>
+  </header>
+
+  <section data-topic="greedy" class="col" style="gap:18px">
+    <div class="lead">
+      <h2>Greedy Algorithms: Activity Selection, Huffman Codes and Coin Change</h2>
+      <p>A greedy algorithm builds its answer in small steps. At each step it takes the choice that looks best right now and never goes back on it. That makes it fast, but it is only correct when the problem has the <strong>greedy-choice property</strong> and <strong>optimal substructure</strong>. Try each problem, then switch strategies or examples to see when greedy fails.</p>
+    </div>
+
+    <div class="panel controls">
+      <div class="field">
+        <span class="label">Problem</span>
+        <div class="seg" id="prob">
+          <button type="button" data-v="activity" aria-pressed="true">Activity selection</button>
+          <button type="button" data-v="huffman">Huffman codes</button>
+          <button type="button" data-v="coins">Coin change</button>
+        </div>
+      </div>
+      <div class="field" data-for="activity">
+        <label class="label" for="strat">Greedy order</label>
+        <select id="strat">
+          <option value="finish">Earliest finish time</option>
+          <option value="start">Earliest start time</option>
+          <option value="short">Shortest interval</option>
+        </select>
+      </div>
+      <div class="field" data-for="activity">
+        <label class="label" for="apreset">Example</label>
+        <select id="apreset"></select>
+      </div>
+      <div class="field grow" data-for="huffman">
+        <label class="label" for="htext">Message</label>
+        <input type="text" id="htext" maxlength="200" spellcheck="false">
+      </div>
+      <div class="field" data-for="huffman">
+        <label class="label" for="hpreset">Example</label>
+        <select id="hpreset"></select>
+      </div>
+      <div class="field" data-for="huffman" style="gap:6px">
+        <span class="label">Options</span>
+        <label class="check"><input type="checkbox" id="hcase" checked> Ignore upper/lower case</label>
+      </div>
+      <div class="field grow" data-for="coins">
+        <label class="label" for="cdenoms">Coin values (¢)</label>
+        <input type="text" id="cdenoms" spellcheck="false">
+      </div>
+      <div class="field" data-for="coins">
+        <label class="label" for="camount">Amount (¢)</label>
+        <input type="number" id="camount" min="1" max="10000" step="1">
+      </div>
+      <div class="field" data-for="coins">
+        <label class="label" for="cpreset">Example</label>
+        <select id="cpreset"></select>
+      </div>
+    </div>
+
+    <div class="lab">
+      <div class="col">
+        <div class="panel stage">
+          <div class="stage-top">
+            <h3 class="label" id="viz-title" style="margin:0">Timeline</h3>
+            <span class="hint" id="hint"></span>
+          </div>
+          <div class="viz-scroll"><svg id="viz" viewBox="0 0 800 400" role="img" aria-label="Algorithm visualization"></svg></div>
+          <div class="legend" id="legend"></div>
+        </div>
+
+        <div class="panel play">
+          <div class="grp">
+            <button type="button" class="btn" id="b-reset" title="Back to step 1 (Home)">⏮ Reset</button>
+            <button type="button" class="btn" id="b-prev" title="Previous step (←)">◀ Back</button>
+            <button type="button" class="btn primary" id="b-play" title="Play / pause (Space)">▶ Play</button>
+            <button type="button" class="btn" id="b-next" title="Next step (→)">Next ▶</button>
+            <button type="button" class="btn" id="b-end" title="Jump to the result (End)">Result ⏭</button>
+          </div>
+          <label class="check" for="speed">Speed <input type="range" id="speed" min="1" max="10" value="5"></label>
+          <span class="counter" id="counter"></span>
+          <input type="range" class="scrub" id="scrub" min="0" max="0" value="0" aria-label="Scrub through steps">
+        </div>
+
+        <div class="panel" data-for="activity">
+          <h3 class="label">Activities (edit to try your own)</h3>
+          <div class="tbl-wrap"><table id="atable" class="edit"></table></div>
+          <div class="row-btns">
+            <button type="button" class="btn" id="aadd">Add activity</button>
+            <span class="muted" id="aerr"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="panel now" id="now">
+          <h3 class="label">What’s happening</h3>
+          <p id="msg"></p>
+        </div>
+        <div class="panel">
+          <h3 class="label" id="res-title">Result</h3>
+          <div id="res"></div>
+        </div>
+        <div class="panel">
+          <h3 class="label" id="data-title">Data</h3>
+          <div id="data"></div>
+        </div>
+        <div class="panel">
+          <h3 class="label">Pseudocode</h3>
+          <div class="code" id="code"></div>
+          <p class="muted rt" id="rt"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ---------- topic nav (shared across pages) ---------- */
+const TOPICS = [
+  {id:'graphs', name:'Graph Traversal', href:'graph-traversal.html'},
+  {id:'mst', name:'Minimum Spanning Trees', href:'mst.html'},
+  {id:'paths', name:'Shortest Paths', href:'shortest-paths.html'},
+  {id:'dp', name:'Dynamic Programming'},
+  {id:'greedy', name:'Greedy Algorithms', href:'greedy.html'},
+];
+const THIS_WEEK = 'greedy', PAGE = 'greedy';
+document.getElementById('topics').innerHTML = TOPICS.map(t => {
+  const tag = `<span class="tag${t.id === THIS_WEEK ? ' now' : ''}">${t.id === THIS_WEEK ? 'This week' : t.href ? 'Open' : 'Soon'}</span>`;
+  return t.href
+    ? `<a class="topic" href="${t.href}"${t.id === PAGE ? ' aria-current="page"' : ''}>${t.name}${tag}</a>`
+    : `<button type="button" class="topic" disabled>${t.name}${tag}</button>`;
+}).join('');
+
+const $ = s => document.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+let prob = 'activity', steps = [], idx = 0, timer = null;
+
+function recorder(extra) {
+  const st = Object.assign({line: [], msg: ''}, extra);
+  const out = [];
+  return {st, out, snap(line, msg) {
+    st.line = [].concat(line); st.msg = msg;
+    out.push(JSON.parse(JSON.stringify(st)));
+  }};
+}
+
+/* =====================================================================
+   Activity selection
+   ===================================================================== */
+const APRESETS = {
+  slide: {name: 'Lecture example (a–h)', acts: [['a',0,6],['b',1,4],['c',3,5],['d',3,8],['e',4,7],['f',5,9],['g',6,10],['h',8,11]]},
+  short: {name: 'Counterexample: shortest interval', acts: [['p',0,6],['q',7,13],['r',5,8]]},
+  start: {name: 'Counterexample: earliest start', acts: [['p',0,12],['q',1,5],['r',6,10]]},
+  random: {name: 'Random (8 activities)'},
+};
+const STRATS = {
+  finish: {label: 'finish time f', key: a => a.f},
+  start: {label: 'start time s', key: a => a.s},
+  short: {label: 'length f − s', key: a => a.f - a.s},
+};
+let acts = [], strat = 'finish';
+const overlap = (a, b) => a.s < b.f && b.s < a.f;
+const iv = a => `[${a.s}, ${a.f})`;
+const byKey = key => (a, b) => (key(a) - key(b)) || (a.n < b.n ? -1 : 1);
+function maxSet(list) {
+  const A = [];
+  for (const a of [...list].sort(byKey(a => a.f))) if (!A.length || a.s >= A.at(-1).f) A.push(a);
+  return A.map(a => a.n);
+}
+function loadActivities(key) {
+  if (key === 'random') {
+    acts = 'abcdefgh'.split('').map(n => { const s = Math.floor(Math.random() * 10), len = 1 + Math.floor(Math.random() * 5); return {n, s, f: s + len}; });
+  } else {
+    acts = APRESETS[key].acts.map(([n, s, f]) => ({n, s, f}));
+  }
+  renderTable(); rebuild();
+}
+function genActivity() {
+  const r = recorder({order: acts.map(a => a.n), take: [], rej: [], cur: null, conflict: null, lastF: null, done: false}), st = r.st;
+  if (!acts.length) { r.snap([], 'Add some activities to start.'); return r.out; }
+  const S = STRATS[strat], ef = strat === 'finish';
+  r.snap(0, `${acts.length} activities. The goal is to choose as many as possible so that no two overlap. Activity [s, f) starts at s and ends just before f.`);
+  const sorted = [...acts].sort(byKey(S.key));
+  st.order = sorted.map(a => a.n);
+  r.snap(ef ? 1 : [1, 2], `Sort by ${S.label}: ${sorted.map(a => `${a.n} (${S.key(a)})`).join(', ')}.`);
+  const A = [];
+  if (ef) {
+    let k = sorted[0];
+    A.push(k); st.take.push(k.n); st.cur = k.n; st.lastF = k.f;
+    r.snap([2, 3], `Take ${k.n} ${iv(k)}: it finishes first. Set k = ${k.n}, so the next activity must start at ${k.f} or later.`);
+    for (const m of sorted.slice(1)) {
+      st.cur = m.n; st.conflict = null;
+      if (m.s >= k.f) {
+        const fk = k.f;
+        A.push(m); st.take.push(m.n); k = m; st.lastF = m.f;
+        r.snap([4, 5, 6, 7], `${m.n} ${iv(m)}: s = ${m.s} ≥ f[k] = ${fk}, so it is compatible. Take it and set k = ${m.n}.`);
+      } else {
+        st.rej.push(m.n); st.conflict = k.n;
+        r.snap([4, 5], `${m.n} ${iv(m)}: s = ${m.s} < f[k] = ${k.f}, so it overlaps ${k.n}. Skip it.`);
+      }
+    }
+  } else {
+    for (const m of sorted) {
+      st.cur = m.n; st.conflict = null;
+      const c = A.find(x => overlap(x, m));
+      if (!c) {
+        A.push(m); st.take.push(m.n);
+        r.snap([3, 4, 5], `${m.n} ${iv(m)} overlaps nothing in A. Take it.`);
+      } else {
+        st.rej.push(m.n); st.conflict = c.n;
+        r.snap([3, 4], `${m.n} ${iv(m)} overlaps ${c.n} ${iv(c)}, which is already in A. Skip it.`);
+      }
+    }
+  }
+  st.cur = null; st.conflict = null; st.done = true;
+  const best = maxSet(acts), n = st.take.length, set = `{${st.take.join(', ')}}`;
+  r.snap(ef ? 8 : 6, n === best.length
+    ? `Greedy chose ${set}: ${n} activit${n === 1 ? 'y' : 'ies'}, the maximum possible.${ef ? '' : ' This order worked here, but it is not safe in general: try the counterexamples.'}`
+    : `Greedy chose ${set}: only ${n}. The maximum is ${best.length}, for example {${best.join(', ')}}. Sorting by ${S.label} is not a safe greedy choice.`);
+  return r.out;
+}
+
+function renderActivity(S) {
+  const order = S.order.map(n => acts.find(a => a.n === n)).filter(Boolean);
+  const maxT = Math.max(1, ...acts.map(a => a.f)), rowH = 36, top = 44, X0 = 64, X1 = 770;
+  const x = t => X0 + (X1 - X0) * t / maxT, H = top + order.length * rowH + 16;
+  const tick = maxT <= 24 ? 1 : Math.ceil(maxT / 12);
+  let g = '';
+  for (let t = 0; t <= maxT; t += tick) g += `<line class="grid" x1="${x(t)}" y1="${top - 8}" x2="${x(t)}" y2="${H - 10}"/><text class="axis" x="${x(t)}" y="${top - 16}">${t}</text>`;
+  if (S.lastF !== null && strat === 'finish' && !S.done) g += `<line class="fk" x1="${x(S.lastF)}" y1="${top - 8}" x2="${x(S.lastF)}" y2="${H - 10}"/><text class="fk-t" x="${x(S.lastF) + 4}" y="${H - 14}">f[k] = ${S.lastF}</text>`;
+  order.forEach((a, i) => {
+    const y = top + i * rowH;
+    const cls = S.cur === a.n ? 'cur' : S.take.includes(a.n) ? 'take' : S.rej.includes(a.n) ? 'rej' : S.conflict === a.n ? '' : 'idle';
+    const conf = S.conflict === a.n ? ' conflict' : '';
+    const w = Math.max(x(a.f) - x(a.s), 4);
+    g += `<text class="rowlbl" x="${X0 - 14}" y="${y + rowH / 2}">${esc(a.n)}</text>
+      <rect class="bar ${cls}${conf}" x="${x(a.s)}" y="${y + 6}" width="${w}" height="${rowH - 12}" rx="6"/>
+      <text class="bartxt ${cls}" x="${x(a.s) + w / 2}" y="${y + rowH / 2}">${iv(a)}</text>`;
+  });
+  setViz(800, H, g);
+  $('#viz-title').textContent = idx === 0 ? 'Timeline' : 'Timeline (in the order greedy considers them)';
+  const best = maxSet(acts);
+  $('#res-title').textContent = 'Chosen set A';
+  $('#res').innerHTML = `<div class="tree-sum"><span class="total">${S.take.length}</span><span class="muted">activities chosen${S.done ? `, maximum possible is ${best.length}` : ''}</span></div>
+    <div class="ds">${S.take.map(n => `<span class="chip ord">${esc(n)}</span>`).join('') || '<span class="muted">empty</span>'}</div>
+    ${S.done ? `<p class="verdict ${S.take.length === best.length ? 'ok' : 'no'}">${S.take.length === best.length ? 'Optimal for this input.' : `Not optimal. A best answer: {${best.join(', ')}}.`}</p>` : ''}`;
+  $('#data-title').textContent = 'Why each activity was taken or skipped';
+  const rows = order.filter(a => S.take.includes(a.n) || S.rej.includes(a.n) || S.cur === a.n);
+  $('#data').innerHTML = rows.length ? `<div class="elist">${rows.map(a => `<div class="erow ${S.take.includes(a.n) ? 'tree' : S.rej.includes(a.n) ? 'reject' : ''}${S.cur === a.n ? ' cur' : ''}"><span class="ek">${esc(a.n)}</span><span class="ew">${iv(a)}</span><span class="es">${S.take.includes(a.n) ? 'taken' : S.rej.includes(a.n) ? 'overlaps, skipped' : 'checking…'}</span></div>`).join('')}</div>` : '<span class="muted">Nothing considered yet.</span>';
+}
+
+function renderTable() {
+  $('#atable').innerHTML = `<tr><th>name</th><th>start s</th><th>finish f</th><th></th></tr>` + acts.map((a, i) =>
+    `<tr><td><input id="an${i}" data-i="${i}" data-k="n" value="${esc(a.n)}" maxlength="3" aria-label="Name"></td>
+     <td><input id="as${i}" data-i="${i}" data-k="s" type="number" min="0" max="99" value="${a.s}" aria-label="Start"></td>
+     <td><input id="af${i}" data-i="${i}" data-k="f" type="number" min="1" max="100" value="${a.f}" aria-label="Finish"></td>
+     <td><button type="button" class="btn small" data-del="${i}" aria-label="Remove ${esc(a.n)}">×</button></td></tr>`).join('');
+}
+$('#atable').addEventListener('change', e => {
+  const t = e.target; if (!t.dataset.k) return;
+  const a = acts[+t.dataset.i], k = t.dataset.k;
+  if (k === 'n') a.n = t.value.trim() || a.n;
+  else a[k] = Math.round(+t.value);
+  const bad = acts.filter(x => !(x.s >= 0 && x.f > x.s && x.f <= 100));
+  const dup = new Set(acts.map(x => x.n)).size !== acts.length;
+  $('#aerr').textContent = bad.length ? `Each activity needs 0 ≤ s < f ≤ 100 (check ${bad.map(x => x.n).join(', ')}).` : dup ? 'Names must be different.' : '';
+  if (!bad.length && !dup) rebuild();
+});
+$('#atable').addEventListener('click', e => {
+  const b = e.target.closest('[data-del]'); if (!b) return;
+  acts.splice(+b.dataset.del, 1); renderTable(); rebuild();
+});
+$('#aadd').addEventListener('click', () => {
+  if (acts.length >= 16) { $('#aerr').textContent = '16 activities is the limit.'; return; }
+  const n = 'abcdefghijklmnopqrstuvwxyz'.split('').find(c => !acts.some(a => a.n === c)) || 'x' + acts.length;
+  const end = Math.max(0, ...acts.map(a => a.f));
+  acts.push({n, s: Math.max(0, end - 2), f: end + 1}); renderTable(); rebuild();
+});
+
+/* =====================================================================
+   Huffman codes
+   ===================================================================== */
+const HPRESETS = {
+  slide: {name: 'This is his message (lecture)', text: 'This is his message'},
+  deaa: {name: 'DEAACAAAAABA (lecture)', text: 'DEAACAAAAABA'},
+  bag: {name: 'BAG', text: 'BAG'},
+  pangram: {name: 'A longer sentence', text: 'the quick brown fox jumps over the lazy dog'},
+};
+const sym = c => c === ' ' ? '␣' : c;
+function huffText() { const t = $('#htext').value.slice(0, 200); return $('#hcase').checked ? t.toUpperCase() : t; }
+function genHuffman() {
+  const text = huffText();
+  const r = recorder({nodes: [], q: [], forest: [], hx: null, hy: null, hz: null, labeled: false, codes: null, text, bits: null}), st = r.st;
+  if (!text.length) { r.snap([], 'Type a message to encode.'); return r.out; }
+  const freq = {};
+  for (const c of text) freq[c] = (freq[c] || 0) + 1;
+  const chars = Object.keys(freq).sort((a, b) => (freq[a] - freq[b]) || (a < b ? -1 : 1));
+  chars.forEach((c, i) => st.nodes.push({id: i, f: freq[c], ch: c, l: null, r: null}));
+  const sortQ = () => st.q.sort((a, b) => (st.nodes[a].f - st.nodes[b].f) || (a - b));
+  st.q = chars.map((_, i) => i); sortQ(); st.forest = [...st.q];
+  const n = chars.length;
+  r.snap(1, `Count each symbol: ${text.length} symbols, ${n} different. Start with a forest of ${n} single-node trees in a min-priority queue Q keyed on frequency.`);
+  const lab = id => { const s = []; const walk = i => { const x = st.nodes[i]; if (x.ch !== null) s.push(sym(x.ch)); else { walk(x.l); walk(x.r); } }; walk(id); return s.length > 5 ? s.slice(0, 4).join('') + '…' : s.join(''); };
+  for (let i = 1; i < n; i++) {
+    const x = st.q.shift(), y = st.q.shift();
+    st.hx = x; st.hy = y; st.hz = null; st.forest = [x, y, ...st.q];
+    r.snap([2, 4, 5], `Step ${i}: extract the two trees with the smallest frequencies, ${lab(x)} (${st.nodes[x].f}) and ${lab(y)} (${st.nodes[y].f}).`);
+    const z = {id: st.nodes.length, f: st.nodes[x].f + st.nodes[y].f, ch: null, l: x, r: y};
+    st.nodes.push(z); st.q.push(z.id); sortQ(); st.forest = [...st.q]; st.hz = z.id;
+    r.snap([3, 6, 7], `Make a new node with frequency ${st.nodes[x].f} + ${st.nodes[y].f} = ${z.f}: left child ${lab(x)}, right child ${lab(y)}. Insert it into Q. ${st.q.length} tree${st.q.length === 1 ? '' : 's'} left.`);
+  }
+  st.hx = st.hy = st.hz = null;
+  const codes = {};
+  const walk = (i, c) => { const x = st.nodes[i]; if (x.ch !== null) codes[x.ch] = c || '0'; else { walk(x.l, c + '0'); walk(x.r, c + '1'); } };
+  walk(st.q[0], '');
+  st.labeled = true; st.codes = codes;
+  r.snap(8, `One tree is left: the Huffman tree. Label each left edge 0 and each right edge 1. A symbol’s code is the path from the root to its leaf, so frequent symbols get short codes.`);
+  st.bits = [...text].map(c => codes[c]);
+  const total = st.bits.join('').length, fixedLen = Math.max(1, Math.ceil(Math.log2(n)));
+  r.snap(8, `Encode the message: ${total} bits, compared with ${fixedLen * text.length} bits for a fixed-length ${fixedLen}-bit code and ${8 * text.length} bits in 8-bit ASCII.`);
+  return r.out;
+}
+function renderHuffman(S) {
+  const nodes = S.nodes, pos = {}, gap = 0.7;
+  let col = 0, maxD = 0;
+  const walk = (i, d) => { const x = nodes[i]; maxD = Math.max(maxD, d); if (x.ch !== null) { pos[i] = {c: col++, d}; return pos[i].c; } const a = walk(x.l, d + 1), b = walk(x.r, d + 1); pos[i] = {c: (a + b) / 2, d}; return pos[i].c; };
+  S.forest.forEach(rt => { walk(rt, 0); col += gap; });
+  const CW = 54, RH = 66, Wd = Math.max(560, 60 + (col - gap) * CW + 40), Hd = 80 + maxD * RH + 30;
+  const X = c => 50 + c * CW, Y = d => 40 + d * RH;
+  const hot = new Set([S.hx, S.hy]);
+  let ge = '', gn = '';
+  const draw = i => {
+    const x = nodes[i], p = pos[i];
+    if (x.ch === null) for (const [ch, bit] of [[x.l, '0'], [x.r, '1']]) {
+      const q = pos[ch];
+      ge += `<line class="tedge${S.labeled ? ' lab' : ''}" x1="${X(p.c)}" y1="${Y(p.d)}" x2="${X(q.c)}" y2="${Y(q.d)}"/>`;
+      if (S.labeled) ge += `<text class="bit" x="${(X(p.c) + X(q.c)) / 2 + (bit === '0' ? -9 : 9)}" y="${(Y(p.d) + Y(q.d)) / 2 - 2}">${bit}</text>`;
+      draw(ch);
+    }
+    const cls = hot.has(i) ? 'hx' : S.hz === i ? 'hz' : x.ch !== null ? 'leaf' : 'inner';
+    gn += x.ch !== null
+      ? `<g class="hn ${cls}" transform="translate(${X(p.c)},${Y(p.d)})"><rect x="-19" y="-19" width="38" height="38" rx="9"/><text class="hch" dy="0.36em">${esc(sym(x.ch))}</text><text class="hf" y="33">${x.f}</text></g>`
+      : `<g class="hn ${cls}" transform="translate(${X(p.c)},${Y(p.d)})"><circle r="18"/><text class="hfi" dy="0.36em">${x.f}</text></g>`;
+  };
+  S.forest.forEach(draw);
+  setViz(Wd, Hd, ge + gn);
+  $('#viz-title').textContent = S.labeled ? 'Huffman tree' : `Huffman forest (${S.forest.length} tree${S.forest.length === 1 ? '' : 's'})`;
+  // result: encoding
+  const text = S.text || '';
+  if (S.bits) {
+    const total = S.bits.join('').length, n = Object.keys(S.codes).length, fl = Math.max(1, Math.ceil(Math.log2(n)));
+    $('#res-title').textContent = 'Encoded message';
+    $('#res').innerHTML = `<div class="tree-sum"><span class="total">${total}</span><span class="muted">bits</span></div>
+      <div class="bits">${S.bits.map((b, i) => `<span title="${esc(sym(text[i]))}">${b}</span>`).join('')}</div>
+      <table class="cmp"><tr><td>Huffman code</td><td>${total} bits</td></tr><tr><td>Fixed-length ${fl}-bit code</td><td>${fl * text.length} bits</td></tr><tr><td>8-bit ASCII</td><td>${8 * text.length} bits</td></tr></table>`;
+  } else {
+    $('#res-title').textContent = 'Encoded message';
+    $('#res').innerHTML = `<span class="muted">Appears once the tree is finished.</span>`;
+  }
+  // data: queue, then code table
+  const leaves = nodes.filter(x => x.ch !== null).sort((a, b) => (b.f - a.f) || (a.ch < b.ch ? -1 : 1));
+  if (S.codes) {
+    $('#data-title').textContent = 'Code table';
+    $('#data').innerHTML = `<div class="tbl-wrap"><table><tr><th>symbol</th><th>freq</th><th>code</th><th>bits</th></tr>${leaves.map(x => `<tr><td>${esc(sym(x.ch))}</td><td>${x.f}</td><td>${S.codes[x.ch]}</td><td>${x.f} × ${S.codes[x.ch].length} = ${x.f * S.codes[x.ch].length}</td></tr>`).join('')}</table></div>`;
+  } else {
+    $('#data-title').textContent = 'Priority queue Q (smallest frequency first)';
+    const qs = S.hx !== null ? [S.hx, S.hy] : [];
+    const label = i => { const s = []; const walk = j => { const x = nodes[j]; if (x.ch !== null) s.push(sym(x.ch)); else { walk(x.l); walk(x.r); } }; walk(i); return esc(s.length > 5 ? s.slice(0, 4).join('') + '…' : s.join('')); };
+    $('#data').innerHTML = `<div class="ds">${qs.length ? `<span class="end">extracted</span>${qs.map(i => `<span class="chip call hot">${label(i)}<em>${nodes[i].f}</em></span>`).join('')}<span class="end">Q</span>` : '<span class="end">min</span>'}${S.q.filter(i => !qs.includes(i)).map((i, k) => `<span class="chip${S.hz === i ? ' newz' : ''}">${label(i)}<em>${nodes[i].f}</em></span>`).join('') || '<span class="muted">empty</span>'}</div>`;
+  }
+}
+
+/* =====================================================================
+   Coin change (cashier's algorithm)
+   ===================================================================== */
+const CPRESETS = {
+  sg: {name: 'Singapore coins, $2.80 (lecture)', denoms: '5, 10, 20, 50, 100', amount: 280},
+  postal: {name: 'Postal stamps, 140¢ (lecture)', denoms: '1, 10, 21, 34, 70, 100, 350, 1225, 1500', amount: 140},
+  small: {name: 'Coins 1, 3, 4: pay 6¢', denoms: '1, 3, 4', amount: 6},
+  stuck: {name: 'Coins 4, 10: pay 12¢', denoms: '4, 10', amount: 12},
+};
+function parseCoins() {
+  const ds = [...new Set($('#cdenoms').value.split(/[^0-9]+/).filter(Boolean).map(Number).filter(x => x > 0 && x <= 10000))].sort((a, b) => a - b).slice(0, 15);
+  const amt = clamp(Math.round(+$('#camount').value) || 0, 0, 10000);
+  return {ds, amt};
+}
+function optimalCoins(ds, amt) {
+  const best = new Array(amt + 1).fill(Infinity), from = new Array(amt + 1).fill(0);
+  best[0] = 0;
+  for (let v = 1; v <= amt; v++) for (const c of ds) if (c <= v && best[v - c] + 1 < best[v]) { best[v] = best[v - c] + 1; from[v] = c; }
+  if (best[amt] === Infinity) return null;
+  const out = [];
+  for (let v = amt; v > 0; v -= from[v]) out.push(from[v]);
+  return out.sort((a, b) => b - a);
+}
+const coinList = l => l.length ? l.join(' + ') : '—';
+function genCoins() {
+  const {ds, amt} = parseCoins();
+  const r = recorder({ds, amt, x: amt, given: [], cur: null, stuck: false, done: false, opt: null}), st = r.st;
+  if (!ds.length || !amt) { r.snap([], 'Enter some coin values and an amount to pay.'); return r.out; }
+  r.snap(1, `Pay ${amt}¢ with as few coins as possible. Cashier’s algorithm: repeatedly give the largest coin that is not more than what is still owed.`);
+  while (st.x > 0) {
+    const c = [...ds].reverse().find(v => v <= st.x);
+    if (!c) {
+      st.cur = null; st.stuck = true;
+      r.snap([2, 3, 4], `${st.x}¢ is still owed, but the smallest coin (${ds[0]}¢) is bigger than that. Greedy is stuck and cannot make exact change.`);
+      break;
+    }
+    const before = st.x;
+    st.cur = c; st.x -= c; st.given.push(c);
+    r.snap([2, 3, 5], `${before}¢ owed. The largest coin ≤ ${before} is ${c}¢. Give it: ${st.x}¢ left.`);
+  }
+  st.cur = null; st.done = true;
+  const opt = optimalCoins(ds, amt); st.opt = opt;
+  const n = st.given.length;
+  let msg;
+  if (st.stuck) msg = opt ? `Greedy failed, but exact change is possible with ${opt.length} coins: ${coinList(opt)}.` : `Greedy failed, and no combination of these coins makes exactly ${amt}¢.`;
+  else msg = `Greedy used ${n} coin${n === 1 ? '' : 's'}: ${coinList(st.given)}.` + (opt.length === n ? ' That is optimal: no combination uses fewer coins.' : ` The optimal answer uses only ${opt.length}: ${coinList(opt)}. Greedy is not optimal for these coin values.`);
+  r.snap(6, msg);
+  return r.out;
+}
+function renderCoins(S) {
+  const ds = S.ds || [], Wd = 800, R = 25;
+  let g = `<text class="cap" x="24" y="30">Coins available</text>`;
+  const step = Math.min(70, (Wd - 60) / Math.max(ds.length, 1));
+  ds.forEach((c, i) => {
+    const cls = S.cur === c ? 'cur' : (!S.done && c > S.x) ? 'big' : '';
+    g += `<g class="coin ${cls}" transform="translate(${48 + i * step},${76})"><circle r="${R}"/><text dy="0.36em" style="font-size:${String(c).length > 3 ? 11 : 14}px">${c}</text></g>`;
+  });
+  g += `<text class="cap" x="24" y="150">Still owed</text><text class="owed" x="24" y="196">${S.x ?? 0}¢</text>`;
+  if (S.stuck) g += `<text class="stuck" x="190" y="192">stuck: no coin fits</text>`;
+  g += `<text class="cap" x="24" y="240">Coins given (${S.given?.length || 0})</text>`;
+  const per = 13;
+  (S.given || []).forEach((c, i) => {
+    const cx = 48 + (i % per) * 56, cy = 286 + Math.floor(i / per) * 58;
+    g += `<g class="coin given${i === S.given.length - 1 && S.cur ? ' cur' : ''}" transform="translate(${cx},${cy})"><circle r="${R}"/><text dy="0.36em" style="font-size:${String(c).length > 3 ? 11 : 14}px">${c}</text></g>`;
+  });
+  const Hd = 300 + Math.max(1, Math.ceil((S.given?.length || 0) / per)) * 58;
+  setViz(Wd, Hd, g);
+  $('#viz-title').textContent = 'Cashier’s algorithm';
+  $('#res-title').textContent = 'Greedy vs optimal';
+  const opt = S.opt, n = S.given?.length || 0;
+  $('#res').innerHTML = S.done
+    ? `<table class="cmp"><tr><th></th><th>coins</th><th>which</th></tr>
+        <tr><td>Greedy</td><td>${S.stuck ? 'stuck' : n}</td><td>${coinList(S.given)}</td></tr>
+        <tr><td>Optimal</td><td>${opt ? opt.length : 'none'}</td><td>${opt ? coinList(opt) : 'no exact change'}</td></tr></table>
+       <p class="verdict ${!S.stuck && opt && opt.length === n ? 'ok' : 'no'}">${!S.stuck && opt && opt.length === n ? 'Greedy is optimal here.' : 'Greedy is not optimal here.'}</p>
+       <p class="muted">The optimal answer is found by checking every amount from 1 to ${S.amt}¢ (dynamic programming, next week’s topic).</p>`
+    : `<span class="muted">Greedy has given ${n} coin${n === 1 ? '' : 's'} so far. The comparison appears at the end.</span>`;
+  $('#data-title').textContent = 'Coins given, by value';
+  const counts = {};
+  (S.given || []).forEach(c => counts[c] = (counts[c] || 0) + 1);
+  $('#data').innerHTML = Object.keys(counts).length ? `<div class="ds">${Object.keys(counts).map(Number).sort((a, b) => b - a).map(c => `<span class="chip ord">${c}¢<em>× ${counts[c]}</em></span>`).join('')}</div>` : '<span class="muted">none yet</span>';
+}
+
+/* =====================================================================
+   Shared: pseudocode, playback, rendering
+   ===================================================================== */
+const CODE = {
+  finish: ['GREEDY-ACTIVITY-SELECTOR(s, f, n):', '  sort so that f[1] ≤ f[2] ≤ … ≤ f[n]', '  A ← {a1}', '  k ← 1                    ▸ last activity added', '  for m ← 2 to n:', '    if s[m] ≥ f[k]:          ▸ compatible with A', '      A ← A ∪ {am}', '      k ← m', '  return A'],
+  other: ['GREEDY(activities):', '  sort by KEY', '  A ← ∅', '  for each activity a, in sorted order:', '    if a overlaps no activity in A:', '      A ← A ∪ {a}', '  return A'],
+  huffman: ['HUFFMAN(C):', '  n ← |C|; Q ← C            ▸ min-priority queue on freq', '  for i ← 1 to n − 1:', '    allocate a new node z', '    x ← EXTRACT-MIN(Q); z.left ← x', '    y ← EXTRACT-MIN(Q); z.right ← y', '    z.freq ← x.freq + y.freq', '    INSERT(Q, z)', '  return EXTRACT-MIN(Q)      ▸ root of the tree'],
+  coins: ['CASHIER(x, c1 < c2 < … < cn):', '  S ← ∅                      ▸ coins given', '  while x > 0:', '    ck ← largest coin with ck ≤ x', '    if there is no such coin: return "no solution"', '    x ← x − ck; S ← S ∪ {ck}', '  return S'],
+};
+const RT = {
+  activity: 'Running time: sorting O(n log n), then one Θ(n) pass, so O(n log n) overall.',
+  huffman: 'Running time: n − 1 merges, each with O(log n) heap operations, so O(n log n).',
+  coins: 'Running time: one step per coin given. Fast, but only optimal for some sets of coin values.',
+};
+const LEGEND = {
+  activity: '<span><i class="sw idle"></i>not considered yet</span><span><i class="sw cur"></i>being checked</span><span><i class="sw take"></i>taken</span><span><i class="sw rej"></i>skipped (overlaps)</span><span><i class="sw conflict"></i>the activity it clashes with</span>',
+  huffman: '<span><i class="sw leaf"></i>symbol (leaf) with frequency</span><span><i class="sw inner"></i>merged node</span><span><i class="sw hx"></i>just extracted</span><span><i class="sw newz"></i>new node</span>',
+  coins: '<span><i class="sw coin"></i>coin</span><span><i class="sw cur"></i>chosen now</span><span><i class="sw big"></i>too big for what is owed</span>',
+};
+const HINT = {
+  activity: 'Edit the table below to make your own activities.',
+  huffman: 'Type any message in the box above.',
+  coins: 'Change the coin values or the amount above.',
+};
+
+function setViz(w, h, inner) {
+  const svg = $('#viz');
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.style.width = w > 800 ? `${w}px` : '100%';
+  svg.style.maxWidth = w > 800 ? 'none' : '100%';
+  svg.innerHTML = inner;
+}
+function generate() { return prob === 'activity' ? genActivity() : prob === 'huffman' ? genHuffman() : genCoins(); }
+function rebuild() {
+  stop(); steps = generate(); idx = 0;
+  $('#scrub').max = Math.max(0, steps.length - 1);
+  render();
+}
+function render() {
+  const S = steps[idx];
+  document.querySelectorAll('[data-for]').forEach(el => el.hidden = el.dataset.for !== prob);
+  $('#legend').innerHTML = LEGEND[prob];
+  $('#hint').textContent = HINT[prob];
+  $('#msg').textContent = S ? S.msg : '';
+  $('#counter').textContent = `Step ${idx + 1} / ${steps.length}`;
+  $('#scrub').value = idx;
+  $('#b-prev').disabled = $('#b-reset').disabled = idx === 0;
+  $('#b-next').disabled = $('#b-end').disabled = idx >= steps.length - 1;
+  const code = prob === 'activity' ? (strat === 'finish' ? CODE.finish : CODE.other.map(l => l.replace('KEY', STRATS[strat].label))) : CODE[prob];
+  $('#code').innerHTML = code.map((l, i) => `<div class="${S && S.line.includes(i) ? 'on' : ''}">${esc(l)}</div>`).join('');
+  $('#rt').textContent = RT[prob];
+  if (!S) return;
+  if (prob === 'activity') renderActivity(S);
+  else if (prob === 'huffman') renderHuffman(S);
+  else renderCoins(S);
+}
+function go(i) { if (!steps.length) return; idx = clamp(i, 0, steps.length - 1); render(); }
+function next() { if (idx >= steps.length - 1) { stop(); return false; } idx++; render(); return true; }
+function speedMs() { return 1600 / Math.pow(1.45, +$('#speed').value - 1); }
+function play() {
+  if (timer) { stop(); return; }
+  if (idx >= steps.length - 1) idx = 0;
+  const tick = () => { if (next()) timer = setTimeout(tick, speedMs()); else stop(); };
+  timer = setTimeout(tick, 0);
+  $('#b-play').textContent = '❚❚ Pause';
+}
+function stop() { clearTimeout(timer); timer = null; $('#b-play').textContent = '▶ Play'; }
+
+/* ---------- controls ---------- */
+$('#prob').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  $('#prob').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+  prob = b.dataset.v; rebuild();
+});
+$('#strat').addEventListener('change', e => { strat = e.target.value; rebuild(); });
+$('#apreset').innerHTML = Object.entries(APRESETS).map(([k, p]) => `<option value="${k}">${p.name}</option>`).join('');
+$('#apreset').addEventListener('change', e => {
+  const k = e.target.value;
+  if (k === 'short' || k === 'start') { strat = k; $('#strat').value = k; }
+  else if (k === 'slide') { strat = 'finish'; $('#strat').value = 'finish'; }
+  loadActivities(k);
+});
+$('#hpreset').innerHTML = Object.entries(HPRESETS).map(([k, p]) => `<option value="${k}">${p.name}</option>`).join('');
+$('#hpreset').addEventListener('change', e => { $('#htext').value = HPRESETS[e.target.value].text; rebuild(); });
+$('#htext').addEventListener('input', () => { rebuild(); });
+$('#hcase').addEventListener('change', rebuild);
+$('#cpreset').innerHTML = Object.entries(CPRESETS).map(([k, p]) => `<option value="${k}">${p.name}</option>`).join('');
+$('#cpreset').addEventListener('change', e => { const p = CPRESETS[e.target.value]; $('#cdenoms').value = p.denoms; $('#camount').value = p.amount; rebuild(); });
+$('#cdenoms').addEventListener('change', rebuild);
+$('#camount').addEventListener('change', rebuild);
+$('#b-reset').addEventListener('click', () => { stop(); go(0); });
+$('#b-prev').addEventListener('click', () => { stop(); go(idx - 1); });
+$('#b-next').addEventListener('click', () => { stop(); next(); });
+$('#b-end').addEventListener('click', () => { stop(); go(steps.length - 1); });
+$('#b-play').addEventListener('click', play);
+$('#scrub').addEventListener('input', e => { stop(); go(+e.target.value); });
+document.addEventListener('keydown', e => {
+  if (e.target.closest('select, input:not([type=checkbox]), textarea')) return;
+  if (e.key === 'ArrowRight') { e.preventDefault(); stop(); next(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); stop(); go(idx - 1); }
+  else if (e.key === 'Home') { stop(); go(0); }
+  else if (e.key === 'End') { stop(); go(steps.length - 1); }
+  else if (e.key === ' ' && !e.target.closest('button')) { e.preventDefault(); play(); }
+});
+
+// Open a specific problem from a link such as greedy.html#huffman
+const fromHash = location.hash.slice(1);
+if (['activity', 'huffman', 'coins'].includes(fromHash)) {
+  prob = fromHash;
+  $('#prob').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x.dataset.v === prob));
+}
+$('#htext').value = HPRESETS.slide.text;
+$('#cdenoms').value = CPRESETS.sg.denoms; $('#camount').value = CPRESETS.sg.amount;
+loadActivities('slide');
+</script>
+</body>
+</html>
