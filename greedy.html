@@ -235,7 +235,6 @@ a.topic{text-decoration:none;color:inherit}
 /* Greedy page */
 .field.grow{flex:1 1 260px}
 .controls input[type=text],.controls input[type=number]{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-width:0;width:100%}
-.controls input[type=number]{width:7em}
 .viz-scroll{overflow-x:auto}
 #viz{display:block;height:auto}
 #viz .grid{stroke:var(--line);stroke-width:1}
@@ -265,14 +264,7 @@ a.topic{text-decoration:none;color:inherit}
 #viz .hch{font-family:var(--display);font-weight:800;font-size:17px;fill:var(--ink);text-anchor:middle}
 #viz .hf{font-family:var(--mono);font-size:12px;fill:var(--muted);text-anchor:middle}
 #viz .hfi{font-family:var(--mono);font-size:13px;font-weight:600;fill:var(--ink);text-anchor:middle}
-#viz .coin circle{fill:var(--frontier);stroke:var(--ink);stroke-width:1.5}
-#viz .coin text{font-family:var(--mono);font-weight:600;fill:var(--on-warm);text-anchor:middle}
-#viz .coin.big{opacity:.3}
-#viz .coin.cur circle{fill:var(--accent);stroke:var(--accent)}
-#viz .coin.cur text{fill:var(--panel)}
 #viz .cap{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;fill:var(--muted)}
-#viz .owed{font-family:var(--display);font-weight:800;font-size:46px;fill:var(--ink)}
-#viz .stuck{font-family:var(--body);font-weight:600;font-size:16px;fill:var(--current)}
 .bits{font-family:var(--mono);font-size:13px;display:flex;flex-wrap:wrap;gap:2px 7px;margin:8px 0;word-break:break-all}
 .bits span:nth-child(even){color:var(--accent)}
 table.cmp{margin-top:8px}
@@ -284,7 +276,6 @@ table.cmp{margin-top:8px}
 .sw.rej{background:transparent;border:2px dashed var(--current)} .sw.conflict{border:3px solid var(--current)}
 .sw.inner{background:var(--accent-soft);border-color:var(--accent);border-radius:50%;width:14px;height:14px}
 .sw.hx{background:var(--current);border-color:var(--current)} .sw.newz{background:var(--frontier);border-color:var(--frontier);border-radius:50%;width:14px;height:14px}
-.sw.coin{background:var(--frontier);border-radius:50%;width:14px;height:14px} .sw.big{background:var(--frontier);opacity:.3;border-radius:50%;width:14px;height:14px}
 table.edit input{width:4.6em;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:3px 6px;font-family:var(--mono)}
 .btn.small{padding:2px 10px}
 .row-btns{display:flex;gap:12px;align-items:center;margin-top:10px;flex-wrap:wrap}
@@ -304,7 +295,7 @@ table.edit input{width:4.6em;background:var(--panel);border:1px solid var(--line
 
   <section data-topic="greedy" class="col" style="gap:18px">
     <div class="lead">
-      <h2>Greedy Algorithms: Activity Selection, Huffman Codes and Coin Change</h2>
+      <h2>Greedy Algorithms: Activity Selection and Huffman Codes</h2>
       <p>A greedy algorithm builds its answer in small steps. At each step it takes the choice that looks best right now and never goes back on it. That makes it fast, but it is only correct when the problem has the <strong>greedy-choice property</strong> and <strong>optimal substructure</strong>. Try each problem, then switch strategies or examples to see when greedy fails.</p>
     </div>
 
@@ -314,7 +305,6 @@ table.edit input{width:4.6em;background:var(--panel);border:1px solid var(--line
         <div class="seg" id="prob">
           <button type="button" data-v="activity" aria-pressed="true">Activity selection</button>
           <button type="button" data-v="huffman">Huffman codes</button>
-          <button type="button" data-v="coins">Coin change</button>
         </div>
       </div>
       <div class="field" data-for="activity">
@@ -340,18 +330,6 @@ table.edit input{width:4.6em;background:var(--panel);border:1px solid var(--line
       <div class="field" data-for="huffman" style="gap:6px">
         <span class="label">Options</span>
         <label class="check"><input type="checkbox" id="hcase" checked> Ignore upper/lower case</label>
-      </div>
-      <div class="field grow" data-for="coins">
-        <label class="label" for="cdenoms">Coin values (¢)</label>
-        <input type="text" id="cdenoms" spellcheck="false">
-      </div>
-      <div class="field" data-for="coins">
-        <label class="label" for="camount">Amount (¢)</label>
-        <input type="number" id="camount" min="1" max="10000" step="1">
-      </div>
-      <div class="field" data-for="coins">
-        <label class="label" for="cpreset">Example</label>
-        <select id="cpreset"></select>
       </div>
     </div>
 
@@ -670,111 +648,24 @@ function renderHuffman(S) {
 }
 
 /* =====================================================================
-   Coin change (cashier's algorithm)
-   ===================================================================== */
-const CPRESETS = {
-  sg: {name: 'Singapore coins, $2.80 (lecture)', denoms: '5, 10, 20, 50, 100', amount: 280},
-  postal: {name: 'Postal stamps, 140¢ (lecture)', denoms: '1, 10, 21, 34, 70, 100, 350, 1225, 1500', amount: 140},
-  small: {name: 'Coins 1, 3, 4: pay 6¢', denoms: '1, 3, 4', amount: 6},
-  stuck: {name: 'Coins 4, 10: pay 12¢', denoms: '4, 10', amount: 12},
-};
-function parseCoins() {
-  const ds = [...new Set($('#cdenoms').value.split(/[^0-9]+/).filter(Boolean).map(Number).filter(x => x > 0 && x <= 10000))].sort((a, b) => a - b).slice(0, 15);
-  const amt = clamp(Math.round(+$('#camount').value) || 0, 0, 10000);
-  return {ds, amt};
-}
-function optimalCoins(ds, amt) {
-  const best = new Array(amt + 1).fill(Infinity), from = new Array(amt + 1).fill(0);
-  best[0] = 0;
-  for (let v = 1; v <= amt; v++) for (const c of ds) if (c <= v && best[v - c] + 1 < best[v]) { best[v] = best[v - c] + 1; from[v] = c; }
-  if (best[amt] === Infinity) return null;
-  const out = [];
-  for (let v = amt; v > 0; v -= from[v]) out.push(from[v]);
-  return out.sort((a, b) => b - a);
-}
-const coinList = l => l.length ? l.join(' + ') : '—';
-function genCoins() {
-  const {ds, amt} = parseCoins();
-  const r = recorder({ds, amt, x: amt, given: [], cur: null, stuck: false, done: false, opt: null}), st = r.st;
-  if (!ds.length || !amt) { r.snap([], 'Enter some coin values and an amount to pay.'); return r.out; }
-  r.snap(1, `Pay ${amt}¢ with as few coins as possible. Cashier’s algorithm: repeatedly give the largest coin that is not more than what is still owed.`);
-  while (st.x > 0) {
-    const c = [...ds].reverse().find(v => v <= st.x);
-    if (!c) {
-      st.cur = null; st.stuck = true;
-      r.snap([2, 3, 4], `${st.x}¢ is still owed, but the smallest coin (${ds[0]}¢) is bigger than that. Greedy is stuck and cannot make exact change.`);
-      break;
-    }
-    const before = st.x;
-    st.cur = c; st.x -= c; st.given.push(c);
-    r.snap([2, 3, 5], `${before}¢ owed. The largest coin ≤ ${before} is ${c}¢. Give it: ${st.x}¢ left.`);
-  }
-  st.cur = null; st.done = true;
-  const opt = optimalCoins(ds, amt); st.opt = opt;
-  const n = st.given.length;
-  let msg;
-  if (st.stuck) msg = opt ? `Greedy failed, but exact change is possible with ${opt.length} coins: ${coinList(opt)}.` : `Greedy failed, and no combination of these coins makes exactly ${amt}¢.`;
-  else msg = `Greedy used ${n} coin${n === 1 ? '' : 's'}: ${coinList(st.given)}.` + (opt.length === n ? ' That is optimal: no combination uses fewer coins.' : ` The optimal answer uses only ${opt.length}: ${coinList(opt)}. Greedy is not optimal for these coin values.`);
-  r.snap(6, msg);
-  return r.out;
-}
-function renderCoins(S) {
-  const ds = S.ds || [], Wd = 800, R = 25;
-  let g = `<text class="cap" x="24" y="30">Coins available</text>`;
-  const step = Math.min(70, (Wd - 60) / Math.max(ds.length, 1));
-  ds.forEach((c, i) => {
-    const cls = S.cur === c ? 'cur' : (!S.done && c > S.x) ? 'big' : '';
-    g += `<g class="coin ${cls}" transform="translate(${48 + i * step},${76})"><circle r="${R}"/><text dy="0.36em" style="font-size:${String(c).length > 3 ? 11 : 14}px">${c}</text></g>`;
-  });
-  g += `<text class="cap" x="24" y="150">Still owed</text><text class="owed" x="24" y="196">${S.x ?? 0}¢</text>`;
-  if (S.stuck) g += `<text class="stuck" x="190" y="192">stuck: no coin fits</text>`;
-  g += `<text class="cap" x="24" y="240">Coins given (${S.given?.length || 0})</text>`;
-  const per = 13;
-  (S.given || []).forEach((c, i) => {
-    const cx = 48 + (i % per) * 56, cy = 286 + Math.floor(i / per) * 58;
-    g += `<g class="coin given${i === S.given.length - 1 && S.cur ? ' cur' : ''}" transform="translate(${cx},${cy})"><circle r="${R}"/><text dy="0.36em" style="font-size:${String(c).length > 3 ? 11 : 14}px">${c}</text></g>`;
-  });
-  const Hd = 300 + Math.max(1, Math.ceil((S.given?.length || 0) / per)) * 58;
-  setViz(Wd, Hd, g);
-  $('#viz-title').textContent = 'Cashier’s algorithm';
-  $('#res-title').textContent = 'Greedy vs optimal';
-  const opt = S.opt, n = S.given?.length || 0;
-  $('#res').innerHTML = S.done
-    ? `<table class="cmp"><tr><th></th><th>coins</th><th>which</th></tr>
-        <tr><td>Greedy</td><td>${S.stuck ? 'stuck' : n}</td><td>${coinList(S.given)}</td></tr>
-        <tr><td>Optimal</td><td>${opt ? opt.length : 'none'}</td><td>${opt ? coinList(opt) : 'no exact change'}</td></tr></table>
-       <p class="verdict ${!S.stuck && opt && opt.length === n ? 'ok' : 'no'}">${!S.stuck && opt && opt.length === n ? 'Greedy is optimal here.' : 'Greedy is not optimal here.'}</p>
-       <p class="muted">The optimal answer is found by checking every amount from 1 to ${S.amt}¢ (dynamic programming, next week’s topic).</p>`
-    : `<span class="muted">Greedy has given ${n} coin${n === 1 ? '' : 's'} so far. The comparison appears at the end.</span>`;
-  $('#data-title').textContent = 'Coins given, by value';
-  const counts = {};
-  (S.given || []).forEach(c => counts[c] = (counts[c] || 0) + 1);
-  $('#data').innerHTML = Object.keys(counts).length ? `<div class="ds">${Object.keys(counts).map(Number).sort((a, b) => b - a).map(c => `<span class="chip ord">${c}¢<em>× ${counts[c]}</em></span>`).join('')}</div>` : '<span class="muted">none yet</span>';
-}
-
-/* =====================================================================
    Shared: pseudocode, playback, rendering
    ===================================================================== */
 const CODE = {
   finish: ['GREEDY-ACTIVITY-SELECTOR(s, f, n):', '  sort so that f[1] ≤ f[2] ≤ … ≤ f[n]', '  A ← {a1}', '  k ← 1                    ▸ last activity added', '  for m ← 2 to n:', '    if s[m] ≥ f[k]:          ▸ compatible with A', '      A ← A ∪ {am}', '      k ← m', '  return A'],
   other: ['GREEDY(activities):', '  sort by KEY', '  A ← ∅', '  for each activity a, in sorted order:', '    if a overlaps no activity in A:', '      A ← A ∪ {a}', '  return A'],
   huffman: ['HUFFMAN(C):', '  n ← |C|; Q ← C            ▸ min-priority queue on freq', '  for i ← 1 to n − 1:', '    allocate a new node z', '    x ← EXTRACT-MIN(Q); z.left ← x', '    y ← EXTRACT-MIN(Q); z.right ← y', '    z.freq ← x.freq + y.freq', '    INSERT(Q, z)', '  return EXTRACT-MIN(Q)      ▸ root of the tree'],
-  coins: ['CASHIER(x, c1 < c2 < … < cn):', '  S ← ∅                      ▸ coins given', '  while x > 0:', '    ck ← largest coin with ck ≤ x', '    if there is no such coin: return "no solution"', '    x ← x − ck; S ← S ∪ {ck}', '  return S'],
 };
 const RT = {
   activity: 'Running time: sorting O(n log n), then one Θ(n) pass, so O(n log n) overall.',
   huffman: 'Running time: n − 1 merges, each with O(log n) heap operations, so O(n log n).',
-  coins: 'Running time: one step per coin given. Fast, but only optimal for some sets of coin values.',
 };
 const LEGEND = {
   activity: '<span><i class="sw idle"></i>not considered yet</span><span><i class="sw cur"></i>being checked</span><span><i class="sw take"></i>taken</span><span><i class="sw rej"></i>skipped (overlaps)</span><span><i class="sw conflict"></i>the activity it clashes with</span>',
   huffman: '<span><i class="sw leaf"></i>symbol (leaf) with frequency</span><span><i class="sw inner"></i>merged node</span><span><i class="sw hx"></i>just extracted</span><span><i class="sw newz"></i>new node</span>',
-  coins: '<span><i class="sw coin"></i>coin</span><span><i class="sw cur"></i>chosen now</span><span><i class="sw big"></i>too big for what is owed</span>',
 };
 const HINT = {
   activity: 'Edit the table below to make your own activities.',
   huffman: 'Type any message in the box above.',
-  coins: 'Change the coin values or the amount above.',
 };
 
 function setViz(w, h, inner) {
@@ -784,7 +675,7 @@ function setViz(w, h, inner) {
   svg.style.maxWidth = w > 800 ? 'none' : '100%';
   svg.innerHTML = inner;
 }
-function generate() { return prob === 'activity' ? genActivity() : prob === 'huffman' ? genHuffman() : genCoins(); }
+function generate() { return prob === 'activity' ? genActivity() : genHuffman(); }
 function rebuild() {
   stop(); steps = generate(); idx = 0;
   $('#scrub').max = Math.max(0, steps.length - 1);
@@ -805,8 +696,7 @@ function render() {
   $('#rt').textContent = RT[prob];
   if (!S) return;
   if (prob === 'activity') renderActivity(S);
-  else if (prob === 'huffman') renderHuffman(S);
-  else renderCoins(S);
+  else renderHuffman(S);
 }
 function go(i) { if (!steps.length) return; idx = clamp(i, 0, steps.length - 1); render(); }
 function next() { if (idx >= steps.length - 1) { stop(); return false; } idx++; render(); return true; }
@@ -838,10 +728,6 @@ $('#hpreset').innerHTML = Object.entries(HPRESETS).map(([k, p]) => `<option valu
 $('#hpreset').addEventListener('change', e => { $('#htext').value = HPRESETS[e.target.value].text; rebuild(); });
 $('#htext').addEventListener('input', () => { rebuild(); });
 $('#hcase').addEventListener('change', rebuild);
-$('#cpreset').innerHTML = Object.entries(CPRESETS).map(([k, p]) => `<option value="${k}">${p.name}</option>`).join('');
-$('#cpreset').addEventListener('change', e => { const p = CPRESETS[e.target.value]; $('#cdenoms').value = p.denoms; $('#camount').value = p.amount; rebuild(); });
-$('#cdenoms').addEventListener('change', rebuild);
-$('#camount').addEventListener('change', rebuild);
 $('#b-reset').addEventListener('click', () => { stop(); go(0); });
 $('#b-prev').addEventListener('click', () => { stop(); go(idx - 1); });
 $('#b-next').addEventListener('click', () => { stop(); next(); });
@@ -859,12 +745,11 @@ document.addEventListener('keydown', e => {
 
 // Open a specific problem from a link such as greedy.html#huffman
 const fromHash = location.hash.slice(1);
-if (['activity', 'huffman', 'coins'].includes(fromHash)) {
+if (['activity', 'huffman'].includes(fromHash)) {
   prob = fromHash;
   $('#prob').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x.dataset.v === prob));
 }
 $('#htext').value = HPRESETS.slide.text;
-$('#cdenoms').value = CPRESETS.sg.denoms; $('#camount').value = CPRESETS.sg.amount;
 loadActivities('slide');
 </script>
 </body>
