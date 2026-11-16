@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dynamic Programming · Data Structures Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: lab bench — the graph sits on graph paper at left, instrument readouts (queue/stack, code, tables) stack at right */
+:root{
+  --paper:#f2f5f9; --panel:#ffffff; --ink:#152038; --muted:#5a6781; --line:#d6deea; --grid:#e2e8f1;
+  --accent:#2b56e0; --accent-soft:#e3eaff;
+  --frontier:#efb128; --current:#e2437a; --done:#14998a; --cross:#7b61e8;
+  --on-warm:#271c00; --on-strong:#ffffff; --node:#ffffff;
+  --display:'Bricolage Grotesque','Avenir Next',system-ui,sans-serif;
+  --body:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0e1320; --panel:#151c2c; --ink:#e4e9f4; --muted:#95a2bc; --line:#2a344c; --grid:#192135;
+  --accent:#86a2ff; --accent-soft:#1f2a4a;
+  --frontier:#f4c34e; --current:#ff6e9c; --done:#35c2ae; --cross:#a490ff;
+  --on-warm:#271c00; --on-strong:#0e1320; --node:#1b2336; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --paper:#0e1320; --panel:#151c2c; --ink:#e4e9f4; --muted:#95a2bc; --line:#2a344c; --grid:#192135;
+  --accent:#86a2ff; --accent-soft:#1f2a4a;
+  --frontier:#f4c34e; --current:#ff6e9c; --done:#35c2ae; --cross:#a490ff;
+  --on-warm:#271c00; --on-strong:#0e1320; --node:#1b2336; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1320px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-.01em}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* header + topic nav */
+header{display:flex;flex-direction:column;gap:12px}
+.brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.brand h1{font-size:clamp(24px,3.4vw,34px);font-weight:800}
+.brand p{margin:0;color:var(--muted)}
+.topics{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.topic{flex:none;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 14px;cursor:pointer;display:flex;gap:8px;align-items:center;white-space:nowrap}
+.topic[aria-current="page"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.topic[disabled]{cursor:default;color:var(--muted);background:transparent}
+.tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:1px 7px;border-radius:999px;border:1px solid currentColor;opacity:.85}
+.topic[aria-current="page"] .tag{background:var(--frontier);color:var(--on-warm);border-color:var(--frontier);opacity:1}
+
+.lead{display:flex;flex-direction:column;gap:4px}
+.lead h2{font-size:clamp(22px,2.6vw,28px);font-weight:800}
+.lead p{margin:0;color:var(--muted);max-width:72ch}
+
+/* main grid */
+.lab{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:980px){.lab{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;min-width:0}
+.label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+
+/* controls */
+.controls{display:flex;flex-wrap:wrap;gap:14px 20px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:6px 11px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--panel)}
+select{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.check{display:flex;gap:6px;align-items:center;cursor:pointer;user-select:none}
+.check input{accent-color:var(--accent);width:16px;height:16px}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 12px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--panel);border-color:var(--accent);font-weight:600;min-width:84px}
+.btn:disabled{opacity:.4;cursor:default}
+
+/* canvas */
+.stage{padding:0;overflow:hidden}
+.stage-top{display:flex;flex-wrap:wrap;gap:10px 16px;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
+.hint{color:var(--muted);font-size:13px}
+#graph{display:block;width:100%;height:auto;aspect-ratio:800/520;max-width:100%;touch-action:none;
+  background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:20px 20px}
+#graph.mode-node{cursor:copy}
+#graph.mode-edge{cursor:crosshair}
+#graph.mode-delete{cursor:not-allowed}
+.node{cursor:grab}
+.node .body{fill:var(--node);stroke:var(--ink);stroke-width:2;transition:fill .2s}
+.node .lbl{font-family:var(--display);font-weight:800;font-size:17px;text-anchor:middle;fill:var(--ink);pointer-events:none}
+.node .sub{font-family:var(--mono);font-size:12px;text-anchor:middle;fill:var(--muted);pointer-events:none}
+.node .halo{fill:none;stroke:var(--ink);stroke-width:1.5;stroke-dasharray:3 4;opacity:0}
+.node.is-start .halo{opacity:.8}
+.node.st-frontier .body{fill:var(--frontier);stroke:var(--frontier)}
+.node.st-frontier .lbl{fill:var(--on-warm)}
+.node.st-current .body{fill:var(--current);stroke:var(--current)}
+.node.st-current .lbl{fill:var(--on-strong)}
+.node.st-done .body{fill:var(--done);stroke:var(--done)}
+.node.st-done .lbl{fill:var(--on-strong)}
+.node.is-current .body{stroke:var(--ink);stroke-width:3.5}
+.node.pending .body{stroke:var(--accent);stroke-width:4}
+.node.wrong .body{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.badge{fill:var(--ink)}
+.badge-t{fill:var(--paper);font-family:var(--mono);font-size:11px;font-weight:600;text-anchor:middle;pointer-events:none}
+.awaiting .node{cursor:pointer}
+.awaiting .node:hover .body{stroke:var(--accent);stroke-width:4}
+
+.edge{stroke:var(--muted);stroke-width:2.5;opacity:.6;fill:none}
+.edge.tree{stroke:var(--done);stroke-width:5;opacity:1}
+.edge.seen{stroke-dasharray:4 6;opacity:.45}
+.edge.back{stroke:var(--current);stroke-width:3;stroke-dasharray:9 6;opacity:1}
+.edge.forward,.edge.cross{stroke:var(--cross);stroke-width:3;stroke-dasharray:2 6;stroke-linecap:round;opacity:1}
+.edge.exam{stroke:var(--accent);stroke-width:6;opacity:1;stroke-dasharray:none}
+.hit{stroke:transparent;stroke-width:16;fill:none}
+.mode-delete .hit{cursor:not-allowed}
+.rubber{stroke:var(--accent);stroke-width:2;stroke-dasharray:5 5;pointer-events:none}
+.m-idle,.m-seen{fill:var(--muted)} .m-tree{fill:var(--done)} .m-back{fill:var(--current)} .m-cross,.m-forward{fill:var(--cross)} .m-exam{fill:var(--accent)}
+.empty-msg{font-family:var(--display);font-size:20px;fill:var(--muted);text-anchor:middle}
+
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;padding:10px 14px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:13px;height:13px;border-radius:50%;border:2px solid var(--ink);background:var(--node);display:inline-block}
+.dot.f{background:var(--frontier);border-color:var(--frontier)} .dot.c{background:var(--current);border-color:var(--current)} .dot.d{background:var(--done);border-color:var(--done)}
+.ln{width:22px;height:0;border-top:4px solid var(--done);display:inline-block}
+.ln.b{border-top:3px dashed var(--current)} .ln.x{border-top:3px dotted var(--cross)} .ln.e{border-top:4px solid var(--accent)}
+
+/* playback */
+.play{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+.play .grp{display:flex;gap:6px;flex-wrap:wrap}
+.counter{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+input[type=range]{accent-color:var(--accent);width:110px}
+.scrub{flex:1 1 100%;width:100%}
+.predict-bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:14px}
+.score{font-family:var(--mono);font-size:13px;color:var(--muted)}
+
+/* readouts */
+.now{border-left:4px solid var(--accent)}
+.now p{margin:0;font-size:16px;min-height:3em}
+.now.ask{border-left-color:var(--current)}
+.now .fb{margin-top:6px;font-size:14px;font-weight:600;min-height:0}
+.fb.ok{color:var(--done)} .fb.no{color:var(--current)}
+.ds{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:44px;font-family:var(--mono)}
+.ds .end{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.chip{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:34px;padding:0 8px;border-radius:6px;border:2px solid var(--frontier);background:var(--frontier);color:var(--on-warm);font-weight:600;font-family:var(--mono)}
+.chip.hot{border-color:var(--ink);box-shadow:0 0 0 2px var(--panel) inset}
+.chip.stale{background:transparent;color:var(--muted);border-color:var(--line);text-decoration:line-through}
+.chip.call{background:var(--accent-soft);border-color:var(--accent);color:var(--ink);font-size:13px}
+.chip.call.hot{background:var(--current);border-color:var(--current);color:var(--on-strong)}
+.chip.ord{background:var(--done);border-color:var(--done);color:var(--on-strong);position:relative}
+.chip.ord small{position:absolute;top:-8px;right:-6px;background:var(--ink);color:var(--paper);font-size:10px;border-radius:999px;padding:0 4px;line-height:15px}
+.muted{color:var(--muted);font-size:13px}
+.code{font-family:var(--mono);font-size:13px;line-height:1.75;margin:0;overflow-x:auto;white-space:pre;counter-reset:ln}
+.code div{padding:0 8px;border-radius:4px}
+.code div::before{counter-increment:ln;content:counter(ln);display:inline-block;width:1.6em;color:var(--muted);opacity:.6}
+.code div.on{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:4px 8px;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+tr.cur td{background:var(--accent-soft)}
+.adj{font-family:var(--mono);font-size:13px;display:flex;flex-direction:column;gap:2px}
+.adj b{display:inline-block;width:1.6em}
+.adj .on{color:var(--accent);font-weight:600;text-decoration:underline}
+.adj .row.cur{background:var(--accent-soft);border-radius:4px}
+details summary{cursor:pointer;font-weight:600}
+details .ans{font-family:var(--mono);font-size:13px;margin-top:8px;display:flex;flex-direction:column;gap:4px}
+.tasks{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:8px;max-width:75ch}
+.tasks li::marker{font-family:var(--mono);color:var(--muted)}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+@media (max-width:560px){.two{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+[hidden]{display:none!important}
+/* topic nav links */
+a.topic{text-decoration:none;color:inherit}
+.tag.now{background:var(--frontier);color:var(--on-warm);border-color:var(--frontier);opacity:1}
+
+/* MST page */
+.stage{position:relative}
+#wedit{position:absolute;transform:translate(-50%,-50%);width:72px;padding:4px 6px;font-family:var(--mono);font-size:15px;text-align:center;border:2px solid var(--accent);border-radius:6px;background:var(--panel);color:var(--ink);z-index:2}
+.wl{cursor:pointer}
+.wl rect{fill:var(--panel);stroke:var(--line);stroke-width:1.5}
+.wl text{font-family:var(--mono);font-size:16px;font-weight:600;text-anchor:middle;fill:var(--ink);pointer-events:none}
+.wl.tree rect{fill:var(--done);stroke:var(--done)} .wl.tree text{fill:var(--on-strong)}
+.wl.cand rect{fill:var(--frontier);stroke:var(--frontier)} .wl.cand text{fill:var(--on-warm)}
+.wl.exam rect{fill:var(--accent);stroke:var(--accent)} .wl.exam text{fill:var(--panel)}
+.wl.reject rect{stroke:var(--current)} .wl.reject text{fill:var(--current)}
+.wl.seen text{fill:var(--muted)}
+.wl.editing rect{stroke:var(--accent);stroke-width:3}
+.awaiting .wl:hover rect,.mode-weight .wl:hover rect{stroke:var(--accent);stroke-width:3}
+.edge.cand{stroke:var(--frontier);stroke-width:5;opacity:1}
+.edge.reject{stroke:var(--current);stroke-width:2.5;stroke-dasharray:3 7;stroke-linecap:round;opacity:.9}
+.awaiting [data-edge]{cursor:pointer}
+.ln.k{border-top:4px solid var(--frontier)} .ln.r{border-top:3px dotted var(--current)}
+.tree-sum{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+.total{font-family:var(--display);font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.elist{position:relative;display:flex;flex-direction:column;gap:2px;max-height:290px;overflow:auto;font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+.erow{display:grid;grid-template-columns:4em 2.5em minmax(0,1fr);gap:8px;padding:3px 8px;border-radius:4px}
+.erow .es{color:var(--muted)}
+.erow.cur{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.erow.tree .es{color:var(--done);font-weight:600}
+.erow.reject .es{color:var(--current)}
+.erow.reject .ek,.erow.reject .ew{text-decoration:line-through;color:var(--muted)}
+.erow.unused{opacity:.45}
+.sets{display:flex;flex-wrap:wrap;gap:6px;font-family:var(--mono);font-size:13px}
+.set{padding:4px 10px;border:1px solid var(--line);border-radius:999px}
+.set.hot{border-color:var(--accent);background:var(--accent-soft)}
+.chip em{font-style:normal;font-size:11px;margin-left:6px;opacity:.85}
+.chip.inf{background:transparent;border-color:var(--line);color:var(--muted)}
+
+/* Shortest paths page */
+.node.is-target .halo{opacity:1;stroke:var(--frontier);stroke-width:3.5;stroke-dasharray:none}
+.ring{width:14px;height:14px;border-radius:50%;display:inline-block;border:2px dashed var(--ink)}
+.ring.t{border:3px solid var(--frontier)}
+.ln.p{border-top:6px solid var(--frontier)}
+.edge.path{stroke:var(--frontier);stroke-width:7;opacity:1}
+.edge.neg,.edge.warn{stroke:var(--current);stroke-width:4;stroke-dasharray:8 5;opacity:1}
+.m-path{fill:var(--frontier)} .m-neg,.m-warn{fill:var(--current)}
+.wl.path rect{fill:var(--frontier);stroke:var(--frontier)} .wl.path text{fill:var(--on-warm)}
+.wl.neg rect,.wl.warn rect{fill:var(--current);stroke:var(--current)} .wl.neg text,.wl.warn text{fill:var(--on-strong)}
+.wl.negw:not(.tree):not(.path):not(.exam):not(.neg):not(.warn) text{fill:var(--current)}
+.warn{border-left:4px solid var(--current);display:flex;flex-direction:column;gap:6px}
+.warn p{margin:0}
+.arrow{color:var(--muted);font-family:var(--mono)}
+.chip.pathv{background:var(--frontier);border-color:var(--frontier);color:var(--on-warm)}
+.erow.upd .es{color:var(--done);font-weight:600}
+.erow.skip{opacity:.55}
+.erow.ok .es{color:var(--done)}
+.erow.bad{background:var(--accent-soft)} .erow.bad .es{color:var(--current);font-weight:600}
+
+/* Greedy page */
+.field.grow{flex:1 1 260px}
+.controls input[type=text],.controls input[type=number]{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-width:0;width:100%}
+.viz-scroll{overflow-x:auto}
+#viz{display:block;height:auto}
+#viz .grid{stroke:var(--line);stroke-width:1}
+#viz .axis{font-family:var(--mono);font-size:12px;fill:var(--muted);text-anchor:middle}
+#viz .fk{stroke:var(--accent);stroke-width:2;stroke-dasharray:5 5}
+#viz .fk-t{font-family:var(--mono);font-size:12px;fill:var(--accent)}
+#viz .rowlbl{font-family:var(--display);font-weight:800;font-size:17px;fill:var(--ink);text-anchor:end;dominant-baseline:central}
+#viz .bar{transition:fill .2s}
+#viz .bar.idle{fill:var(--panel);stroke:var(--ink);stroke-width:1.5}
+#viz .bar.cur{fill:var(--accent)}
+#viz .bar.take{fill:var(--done)}
+#viz .bar.rej{fill:transparent;stroke:var(--current);stroke-width:2;stroke-dasharray:5 4}
+#viz .bar.conflict{stroke:var(--current);stroke-width:4}
+#viz .bartxt{font-family:var(--mono);font-size:12px;fill:var(--ink);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+#viz .bartxt.cur,#viz .bartxt.take{fill:var(--on-strong)}
+#viz .bartxt.cur{fill:var(--panel)}
+#viz .bartxt.rej{fill:var(--muted)}
+#viz .tedge{stroke:var(--muted);stroke-width:2}
+#viz .tedge.lab{stroke:var(--ink)}
+#viz .bit{font-family:var(--mono);font-size:14px;font-weight:600;fill:var(--accent);text-anchor:middle}
+#viz .hn rect{fill:var(--panel);stroke:var(--ink);stroke-width:2}
+#viz .hn circle{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2}
+#viz .hn.hx rect,#viz .hn.hx circle{fill:var(--current);stroke:var(--current)}
+#viz .hn.hx .hch,#viz .hn.hx .hfi{fill:var(--on-strong)}
+#viz .hn.hz circle{fill:var(--frontier);stroke:var(--frontier)}
+#viz .hn.hz .hfi{fill:var(--on-warm)}
+#viz .hch{font-family:var(--display);font-weight:800;font-size:17px;fill:var(--ink);text-anchor:middle}
+#viz .hf{font-family:var(--mono);font-size:12px;fill:var(--muted);text-anchor:middle}
+#viz .hfi{font-family:var(--mono);font-size:13px;font-weight:600;fill:var(--ink);text-anchor:middle}
+#viz .cap{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;fill:var(--muted)}
+.bits{font-family:var(--mono);font-size:13px;display:flex;flex-wrap:wrap;gap:2px 7px;margin:8px 0;word-break:break-all}
+.bits span:nth-child(even){color:var(--accent)}
+table.cmp{margin-top:8px}
+.verdict{margin:10px 0 0;font-weight:600}
+.verdict.ok{color:var(--done)} .verdict.no{color:var(--current)}
+.chip.newz{border-color:var(--ink)}
+.sw{display:inline-block;width:18px;height:12px;border-radius:3px;border:1.5px solid var(--ink);background:var(--panel)}
+.sw.cur{background:var(--accent);border-color:var(--accent)} .sw.take{background:var(--done);border-color:var(--done)}
+.sw.rej{background:transparent;border:2px dashed var(--current)} .sw.conflict{border:3px solid var(--current)}
+.sw.inner{background:var(--accent-soft);border-color:var(--accent);border-radius:50%;width:14px;height:14px}
+.sw.hx{background:var(--current);border-color:var(--current)} .sw.newz{background:var(--frontier);border-color:var(--frontier);border-radius:50%;width:14px;height:14px}
+table.edit input{width:4.6em;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:3px 6px;font-family:var(--mono)}
+.btn.small{padding:2px 10px}
+.row-btns{display:flex;gap:12px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.rt{margin:8px 0 0}
+#data .erow{grid-template-columns:3em 5.5em minmax(0,1fr)}
+
+/* Dynamic programming page */
+#viz .cell{fill:var(--panel);stroke:var(--line);stroke-width:1.5}
+#viz .cell.s{fill:none;stroke-dasharray:3 4}
+#viz .cell.known{fill:var(--accent-soft);stroke:var(--accent)}
+#viz .cell.cur{fill:var(--panel);stroke:var(--accent);stroke-width:3.5}
+#viz .cell.hp{fill:var(--accent);stroke:var(--accent)}
+#viz .cell.hr{fill:var(--frontier);stroke:var(--frontier)}
+#viz .cell.off{opacity:.4}
+#viz .cv{font-family:var(--mono);font-size:15px;font-weight:600;fill:var(--ink);text-anchor:middle;dominant-baseline:central}
+#viz .cv.on{fill:var(--panel)} #viz .cv.warm{fill:var(--on-warm)}
+#viz .cv.small{font-size:12px;font-weight:400;fill:var(--muted)}
+#viz .cv.calls.many{fill:var(--current);font-weight:600}
+#viz .hdr{font-family:var(--mono);font-size:12px;fill:var(--muted);text-anchor:middle}
+#viz .rl{font-family:var(--mono);font-size:12px;fill:var(--muted);text-anchor:end;dominant-baseline:central}
+#viz .piece.first{fill:var(--accent)} #viz .piece.rest{fill:var(--frontier)} #viz .piece.whole{fill:var(--line)}
+#viz .piece.p0{fill:var(--done)} #viz .piece.p1{fill:var(--done);opacity:.72}
+#viz .pt{font-family:var(--mono);font-size:13px;font-weight:600;fill:var(--on-strong);text-anchor:middle;dominant-baseline:central}
+#viz .pt.acc{fill:var(--panel)} #viz .pt.warm,#viz .pt.dim{fill:var(--on-warm)}
+#viz .tick{stroke:var(--muted)}
+#viz .mat rect{fill:var(--panel);stroke:var(--ink);stroke-width:1.5}
+#viz .mat.chain rect{stroke:var(--accent);stroke-width:2.5}
+#viz .mat.left rect{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2.5}
+#viz .mat.right rect{fill:var(--frontier);stroke:var(--frontier)}
+#viz .mn{font-family:var(--display);font-weight:800;font-size:16px;fill:var(--ink);text-anchor:middle}
+#viz .md{font-family:var(--mono);font-size:12px;fill:var(--muted);text-anchor:middle}
+#viz .mat.right .mn,#viz .mat.right .md{fill:var(--on-warm)}
+.paren{font-family:var(--mono);font-size:18px;font-weight:600;margin:6px 0;word-break:break-all}
+tr.best td{color:var(--done);font-weight:600}
+.stack{display:flex;flex-direction:column;gap:4px;font-family:var(--mono);font-size:13px;max-height:260px;overflow:auto}
+.frame{padding:5px 10px;border:1px solid var(--line);border-radius:6px}
+.frame.top{border-color:var(--accent);background:var(--accent-soft)}
+.err{margin:0;flex-basis:100%} .err:empty{display:none}
+.sw.curb{background:var(--panel);border:3px solid var(--accent)}
+.sw.hp{background:var(--accent);border-color:var(--accent)} .sw.hr{background:var(--frontier);border-color:var(--frontier)}
+.sw.known,.sw.left{background:var(--accent-soft);border-color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1><a href="./" style="color:inherit;text-decoration:none">Data Structures Lab</a></h1>
+      <p>Build a case, run the algorithm one step at a time, and watch the data structures change.</p>
+    </div>
+    <nav class="topics" id="topics" aria-label="Topics"></nav>
+  </header>
+
+  <section data-topic="dp" class="col" style="gap:18px">
+    <div class="lead">
+      <h2>Dynamic Programming: Rod Cutting and Matrix-Chain Multiplication</h2>
+      <p>Dynamic programming solves a problem from the answers to smaller <strong>overlapping subproblems</strong>, using <strong>optimal substructure</strong>: an optimal solution is built from optimal solutions to its subproblems. Each subproblem is solved once and stored, either <strong>top-down</strong> (recursion with memoization) or <strong>bottom-up</strong> (filling a table from small to large).</p>
+    </div>
+
+    <div class="panel controls">
+      <div class="field">
+        <span class="label">Problem</span>
+        <div class="seg" id="prob">
+          <button type="button" data-v="rod" aria-pressed="true">Rod cutting</button>
+          <button type="button" data-v="matrix">Matrix-chain multiplication</button>
+        </div>
+      </div>
+      <div class="field" data-for="rod">
+        <span class="label">Implementation</span>
+        <div class="seg" id="method">
+          <button type="button" data-v="bottom" aria-pressed="true">Bottom-up</button>
+          <button type="button" data-v="memo">Top-down memo</button>
+          <button type="button" data-v="naive">Naive recursion</button>
+        </div>
+      </div>
+      <div class="field" data-for="rod">
+        <label class="label" for="rodn">Rod length n</label>
+        <select id="rodn"></select>
+      </div>
+      <div class="field grow" data-for="rod">
+        <label class="label" for="prices">Prices p[1], p[2], … ($)</label>
+        <input type="text" id="prices" spellcheck="false">
+      </div>
+      <div class="field" data-for="rod">
+        <label class="label" for="rpreset">Example</label>
+        <select id="rpreset"></select>
+      </div>
+      <div class="field grow" data-for="matrix">
+        <label class="label" for="dims">Dimensions p[0], p[1], …, p[n]</label>
+        <input type="text" id="dims" spellcheck="false">
+      </div>
+      <div class="field" data-for="matrix">
+        <label class="label" for="mpreset">Example</label>
+        <select id="mpreset"></select>
+      </div>
+    </div>
+
+    <div class="lab">
+      <div class="col">
+        <div class="panel stage">
+          <div class="stage-top">
+            <h3 class="label" id="viz-title" style="margin:0">DP table</h3>
+            <span class="hint" id="hint"></span>
+          </div>
+          <div class="viz-scroll"><svg id="viz" viewBox="0 0 800 400" role="img" aria-label="Algorithm visualization"></svg></div>
+          <div class="legend" id="legend"></div>
+        </div>
+
+        <div class="panel play">
+          <div class="grp">
+            <button type="button" class="btn" id="b-reset" title="Back to step 1 (Home)">⏮ Reset</button>
+            <button type="button" class="btn" id="b-prev" title="Previous step (←)">◀ Back</button>
+            <button type="button" class="btn primary" id="b-play" title="Play / pause (Space)">▶ Play</button>
+            <button type="button" class="btn" id="b-next" title="Next step (→)">Next ▶</button>
+            <button type="button" class="btn" id="b-end" title="Jump to the result (End)">Result ⏭</button>
+          </div>
+          <label class="check" for="speed">Speed <input type="range" id="speed" min="1" max="10" value="5"></label>
+          <span class="counter" id="counter"></span>
+          <input type="range" class="scrub" id="scrub" min="0" max="0" value="0" aria-label="Scrub through steps">
+          <p class="muted err" id="err"></p>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="panel now" id="now">
+          <h3 class="label">What’s happening</h3>
+          <p id="msg"></p>
+        </div>
+        <div class="panel">
+          <h3 class="label" id="res-title">Result</h3>
+          <div id="res"></div>
+        </div>
+        <div class="panel">
+          <h3 class="label" id="data-title">Data</h3>
+          <div id="data"></div>
+        </div>
+        <div class="panel">
+          <h3 class="label">Pseudocode</h3>
+          <div class="code" id="code"></div>
+          <p class="muted rt" id="rt"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ---------- topic nav (shared across pages) ---------- */
+const TOPICS = [
+  {id:'graphs', name:'Graph Traversal', href:'graph-traversal.html'},
+  {id:'mst', name:'Minimum Spanning Trees', href:'mst.html'},
+  {id:'paths', name:'Shortest Paths', href:'shortest-paths.html'},
+  {id:'greedy', name:'Greedy Algorithms', href:'greedy.html'},
+  {id:'dp', name:'Dynamic Programming', href:'dp.html'},
+];
+const THIS_WEEK = 'dp', PAGE = 'dp';
+document.getElementById('topics').innerHTML = TOPICS.map(t => {
+  const tag = `<span class="tag${t.id === THIS_WEEK ? ' now' : ''}">${t.id === THIS_WEEK ? 'This week' : t.href ? 'Open' : 'Soon'}</span>`;
+  return t.href
+    ? `<a class="topic" href="${t.href}"${t.id === PAGE ? ' aria-current="page"' : ''}>${t.name}${tag}</a>`
+    : `<button type="button" class="topic" disabled>${t.name}${tag}</button>`;
+}).join('');
+
+const $ = s => document.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+const nums = s => s.split(/[^0-9]+/).filter(Boolean).map(Number);
+let prob = 'rod', method = 'bottom', steps = [], idx = 0, timer = null;
+
+function recorder(extra) {
+  const st = Object.assign({line: [], msg: ''}, extra);
+  const out = [];
+  return {st, out, snap(line, msg) {
+    st.line = [].concat(line); st.msg = msg;
+    out.push(JSON.parse(JSON.stringify(st)));
+  }};
+}
+
+/* =====================================================================
+   Rod cutting
+   ===================================================================== */
+const RPRESETS = {
+  slide8: {name: 'Lecture prices, n = 8', prices: '1, 5, 8, 9, 10, 17, 17, 20, 24, 30', n: 8},
+  slide4: {name: 'Lecture prices, n = 4', prices: '1, 5, 8, 9, 10, 17, 17, 20, 24, 30', n: 4},
+  linear: {name: 'No reason to cut (p[i] = 3i)', prices: '3, 6, 9, 12, 15, 18, 21, 24, 27, 30', n: 6},
+  odd: {name: 'Odd lengths are cheap', prices: '1, 6, 2, 13, 3, 19, 4, 26, 5, 32', n: 7},
+};
+function rodInput() {
+  const p = [0, ...nums($('#prices').value).slice(0, 10)];
+  const n = Math.min(+$('#rodn').value || 1, p.length - 1);
+  return {p, n};
+}
+// Bottom-up answer, used for the reconstruction shown with the recursive versions.
+function rodTable(p, n) {
+  const r = [0], s = [0];
+  for (let j = 1; j <= n; j++) { let q = -Infinity; for (let i = 1; i <= j; i++) if (p[i] + r[j - i] > q) { q = p[i] + r[j - i]; s[j] = i; } r[j] = q; }
+  const cuts = []; for (let k = n; k > 0; k -= s[k]) cuts.push(s[k]);
+  return {r, s, cuts};
+}
+function genRod() {
+  const {p, n} = rodInput();
+  const r = recorder({p, n, r: Array(n + 1).fill(null), s: Array(n + 1).fill(null), j: null, i: null, cand: [], calls: 0, perK: Array(n + 1).fill(0), stack: [], cuts: null, done: false}), st = r.st;
+  if (n < 1) { r.snap([], 'Enter at least one price.'); return r.out; }
+  if (method === 'bottom') {
+    st.r[0] = 0;
+    r.snap(1, `Bottom-up: solve the smallest rods first and store each answer in r[j]. A rod of length 0 earns nothing, so r[0] = 0.`);
+    for (let j = 1; j <= n; j++) {
+      st.j = j; st.i = null; st.cand = [];
+      let q = -Infinity;
+      r.snap([2, 3], `Rod of length ${j}: try every length i = 1…${j} for the first piece. All the r values it needs are already in the table.`);
+      for (let i = 1; i <= j; i++) {
+        const v = p[i] + st.r[j - i], better = v > q;
+        st.i = i;
+        if (better) { q = v; st.s[j] = i; }
+        st.cand.push({i, a: p[i], b: st.r[j - i], v, best: false});
+        st.cand.forEach(c => c.best = c.i === st.s[j]);
+        r.snap(better ? [4, 5, 6] : [4, 5], `First piece ${i}: p[${i}] + r[${j - i}] = ${p[i]} + ${st.r[j - i]} = ${v}.${better ? ` Best so far, so s[${j}] = ${i}.` : ` Not better than q = ${q}.`}`);
+      }
+      st.r[j] = q; st.i = null;
+      r.snap(7, `r[${j}] = ${q}: the best revenue for a rod of length ${j}, starting with a piece of length ${st.s[j]}.`);
+    }
+    st.j = null; st.cand = []; st.cuts = [];
+    let k = n;
+    while (k > 0) {
+      st.cuts.push(st.s[k]);
+      r.snap([9, 10, 11], `Reconstruct: s[${k}] = ${st.s[k]}, so cut a piece of length ${st.s[k]}. ${k - st.s[k]} left.`);
+      k -= st.s[k];
+    }
+    st.done = true;
+    r.snap(8, `Maximum revenue for length ${n}: r[${n}] = $${st.r[n]}, with pieces ${st.cuts.join(' + ')}. The table was filled with ${n * (n + 1) / 2} comparisons, so Θ(n²).`);
+    return r.out;
+  }
+  // top-down: memoized or naive recursion
+  const memo = method === 'memo', name = memo ? 'AUX' : 'CUT-ROD';
+  const call = k => {
+    st.calls++; st.perK[k]++; st.stack.push({k, i: null, q: null}); st.j = k; st.i = null;
+    if (memo && st.r[k] !== null) {
+      r.snap(3, `${name}(${k}): r[${k}] = ${st.r[k]} is already stored. Return it without recomputing.`);
+      st.stack.pop(); return st.r[k];
+    }
+    if (k === 0) {
+      if (memo) st.r[0] = 0;
+      r.snap(memo ? [3, 4, 8, 9] : 1, `${name}(0): a rod of length 0 earns 0.`);
+      st.stack.pop(); return 0;
+    }
+    r.snap(memo ? [3, 5, 6] : [2, 3], `Call ${name}(${k}): try every first piece i = 1…${k}. Each try needs ${name}(${k} − i).`);
+    let q = -Infinity, best = 0;
+    for (let i = 1; i <= k; i++) {
+      st.stack.at(-1).i = i;
+      const v = call(k - i);
+      st.j = k; st.i = i;
+      const c = p[i] + v;
+      if (c > q) { q = c; best = i; }
+      st.stack.at(-1).q = q;
+      r.snap(memo ? 7 : 4, `Back in ${name}(${k}): piece ${i} gives p[${i}] + ${name}(${k - i}) = ${p[i]} + ${v} = ${c}. Best so far q = ${q}.`);
+    }
+    if (memo) { st.r[k] = q; st.s[k] = best; }
+    st.i = null;
+    r.snap(memo ? [8, 9] : 5, `${name}(${k}) returns ${q}.${memo ? ` Store it: r[${k}] = ${q}.` : ''}`);
+    st.stack.pop();
+    return q;
+  };
+  r.snap(memo ? 1 : 0, memo
+    ? `Top-down with memoization: recurse as usual, but store each answer r[k] the first time it is computed, and reuse it afterwards.`
+    : `Naive recursion: CUT-ROD(n) tries every first piece and calls itself on the rest. Nothing is stored, so the same subproblems are solved again and again.`);
+  const best = call(n);
+  st.j = null; st.i = null; st.done = true; st.cuts = rodTable(p, n).cuts;
+  r.snap(memo ? 1 : 5, `Maximum revenue for length ${n}: $${best}. That took ${st.calls} calls. ${memo
+    ? `Only ${n + 1} subproblems exist; every other call was answered straight from the table, so the time is Θ(n²).`
+    : `Bottom-up DP solves only ${n + 1} subproblems. The naive recursion makes 2^n = ${2 ** n} calls.`}`);
+  return r.out;
+}
+
+function renderRod(S) {
+  const {p, n} = S, cw = 60, x0 = 96, maxI = p.length - 1;
+  const cx = i => x0 + i * cw;
+  let g = '';
+  // index header
+  for (let i = 0; i <= Math.max(n, maxI); i++) g += `<text class="hdr" x="${cx(i) + cw / 2}" y="26">${i}</text>`;
+  g += `<text class="rl" x="${x0 - 12}" y="26">i, j</text>`;
+  // prices
+  const pi = S.i, rj = S.j !== null && S.i !== null ? S.j - S.i : null;
+  g += `<text class="rl" x="${x0 - 12}" y="62">p[i]</text>`;
+  for (let i = 1; i <= maxI; i++) g += `<rect class="cell price${pi === i ? ' hp' : ''}${i > n ? ' off' : ''}" x="${cx(i) + 3}" y="40" width="${cw - 6}" height="40" rx="6"/><text class="cv${pi === i ? ' on' : ''}" x="${cx(i) + cw / 2}" y="61">${p[i]}</text>`;
+  // r and s
+  g += `<text class="rl" x="${x0 - 12}" y="122">r[j]</text><text class="rl" x="${x0 - 12}" y="172">s[j]</text>`;
+  for (let j = 0; j <= n; j++) {
+    const cls = S.j === j ? ' cur' : rj === j ? ' hr' : S.r[j] !== null ? ' known' : '';
+    g += `<rect class="cell r${cls}" x="${cx(j) + 3}" y="100" width="${cw - 6}" height="40" rx="6"/><text class="cv${rj === j ? ' warm' : ''}" x="${cx(j) + cw / 2}" y="121">${S.r[j] ?? '·'}</text>`;
+    g += `<rect class="cell s" x="${cx(j) + 3}" y="152" width="${cw - 6}" height="36" rx="6"/><text class="cv small" x="${cx(j) + cw / 2}" y="171">${j === 0 ? '' : S.s[j] ?? '·'}</text>`;
+  }
+  if (method !== 'bottom') g += `<text class="rl" x="${x0 - 12}" y="218">calls</text>` + S.perK.map((c, k) => `<text class="cv small calls${c > 1 ? ' many' : ''}" x="${cx(k) + cw / 2}" y="218">${c || ''}</text>`).join('');
+  // rod drawing
+  const ry = 270, unit = 60;
+  if (S.cuts && S.done) {
+    g += `<text class="cap" x="${x0}" y="${ry - 14}">Optimal cut of a rod of length ${n}</text>`;
+    let x = x0;
+    S.cuts.forEach((c, k) => { g += `<rect class="piece p${k % 2}" x="${x}" y="${ry}" width="${c * unit - 4}" height="34" rx="5"/><text class="pt" x="${x + (c * unit - 4) / 2}" y="${ry + 18}">${c} → $${p[c]}</text>`; x += c * unit; });
+  } else if (S.cuts) {
+    g += `<text class="cap" x="${x0}" y="${ry - 14}">Reconstructing the cut of length ${n} from s[j]</text>`;
+    let x = x0; const used = S.cuts.reduce((a, b) => a + b, 0);
+    S.cuts.forEach((c, k) => { g += `<rect class="piece p${k % 2}" x="${x}" y="${ry}" width="${c * unit - 4}" height="34" rx="5"/><text class="pt" x="${x + (c * unit - 4) / 2}" y="${ry + 18}">${c}</text>`; x += c * unit; });
+    if (n - used > 0) g += `<rect class="piece rest" x="${x}" y="${ry}" width="${(n - used) * unit - 4}" height="34" rx="5"/><text class="pt dim" x="${x + ((n - used) * unit - 4) / 2}" y="${ry + 18}">${n - used} left</text>`;
+  } else if (S.j !== null && S.j > 0) {
+    const j = S.j;
+    g += `<text class="cap" x="${x0}" y="${ry - 14}">Rod of length ${j}${S.i ? `: first piece of length ${S.i} (price p[${S.i}]), then the best for the remaining ${j - S.i}` : ''}</text>`;
+    if (S.i) {
+      g += `<rect class="piece first" x="${x0}" y="${ry}" width="${S.i * unit - 4}" height="34" rx="5"/><text class="pt acc" x="${x0 + (S.i * unit - 4) / 2}" y="${ry + 18}">$${p[S.i]}</text>`;
+      if (j - S.i > 0) g += `<rect class="piece rest" x="${x0 + S.i * unit}" y="${ry}" width="${(j - S.i) * unit - 4}" height="34" rx="5"/><text class="pt warm" x="${x0 + S.i * unit + ((j - S.i) * unit - 4) / 2}" y="${ry + 18}">r[${j - S.i}]</text>`;
+    } else {
+      g += `<rect class="piece whole" x="${x0}" y="${ry}" width="${j * unit - 4}" height="34" rx="5"/>`;
+    }
+    for (let k = 0; k <= j; k++) g += `<line class="tick" x1="${x0 + k * unit - 2}" y1="${ry + 38}" x2="${x0 + k * unit - 2}" y2="${ry + 44}"/>`;
+  }
+  setViz(800, 330, g);
+  $('#viz-title').textContent = method === 'bottom' ? 'Prices and DP table (bottom-up)' : method === 'memo' ? 'Prices and memo table (top-down)' : 'Prices and recursive calls (no table)';
+
+  // result
+  const tab = rodTable(p, n);
+  $('#res-title').textContent = 'Maximum revenue';
+  $('#res').innerHTML = S.done
+    ? `<div class="tree-sum"><span class="total">$${tab.r[n]}</span><span class="muted">for a rod of length ${n}</span></div><div class="ds">${tab.cuts.map(c => `<span class="chip ord">${c}<em>$${p[c]}</em></span>`).join('<span class="arrow">+</span>')}</div>
+       ${method !== 'bottom' ? `<p class="verdict ${method === 'memo' ? 'ok' : 'no'}">${S.calls} recursive calls${method === 'naive' ? ` (2^${n} = ${2 ** n})` : ''} for only ${n + 1} different subproblems.</p>` : ''}`
+    : `<span class="muted">${method === 'bottom' ? `r[${n}] appears when the table is full.` : `Calls so far: ${S.calls}.`}</span>`;
+  // data
+  if (method === 'bottom') {
+    $('#data-title').textContent = S.j !== null ? `Candidates for r[${S.j}]` : 'Candidates';
+    $('#data').innerHTML = S.cand.length
+      ? `<div class="tbl-wrap"><table><tr><th>first piece i</th><th>p[i] + r[j − i]</th><th>total</th></tr>${S.cand.map(c => `<tr class="${c.best ? 'best' : ''}${c.i === S.i ? ' cur' : ''}"><td>${c.i}</td><td>${c.a} + ${c.b}</td><td>${c.v}${c.best ? ' ★' : ''}</td></tr>`).join('')}</table></div>`
+      : `<span class="muted">${S.cuts ? 'Following s[j] back from n.' : 'No rod length in progress.'}</span>`;
+  } else {
+    $('#data-title').textContent = 'Call stack (top is the running call)';
+    const name = method === 'memo' ? 'AUX' : 'CUT-ROD';
+    $('#data').innerHTML = S.stack.length
+      ? `<div class="stack">${[...S.stack].reverse().map((f, k) => `<div class="frame${k === 0 ? ' top' : ''}">${name}(${f.k})${f.i !== null ? `<span class="muted"> trying i = ${f.i}${f.q !== null ? `, q = ${f.q}` : ''}</span>` : ''}</div>`).join('')}</div>`
+      : '<span class="muted">empty</span>';
+  }
+}
+
+/* =====================================================================
+   Matrix-chain multiplication
+   ===================================================================== */
+const MPRESETS = {
+  clrs: {name: 'Textbook example (6 matrices)', dims: '30, 35, 15, 5, 10, 20, 25'},
+  three: {name: '3 matrices: 10×100, 100×5, 5×50', dims: '10, 100, 5, 50'},
+  four: {name: '4 matrices: 40×20, 20×30, 30×10, 10×30', dims: '40, 20, 30, 10, 30'},
+  five: {name: '5 matrices', dims: '5, 10, 3, 12, 5, 50'},
+};
+const SUB = '₀₁₂₃₄₅₆₇₈₉';
+const A = i => 'A' + String(i).split('').map(d => SUB[d]).join('');
+function matInput() { return nums($('#dims').value).filter(x => x > 0).slice(0, 9); }
+function parens(s, i, j) { return i === j ? A(i) : `(${parens(s, i, s[i][j])}${parens(s, s[i][j] + 1, j)})`; }
+function genMatrix() {
+  const p = matInput(), n = p.length - 1;
+  const C = Array.from({length: n + 2}, () => Array(n + 2).fill(null)), s = Array.from({length: n + 2}, () => Array(n + 2).fill(null));
+  const r = recorder({p, n, C, s, ci: null, cj: null, k: null, cand: [], order: null}), st = r.st;
+  if (n < 1) { r.snap([], 'Enter at least two dimensions, for example 10, 100, 5.'); return r.out; }
+  r.snap(0, `${n} matrices: ${Array.from({length: n}, (_, i) => `${A(i + 1)} is ${p[i]}×${p[i + 1]}`).join(', ')}. Multiplying a×b by b×c costs a·b·c scalar multiplications. C[i, j] will hold the cheapest cost of computing Aᵢ…Aⱼ.`);
+  for (let i = 1; i <= n; i++) st.C[i][i] = 0;
+  r.snap(1, `A chain of one matrix needs no multiplication: C[i, i] = 0 on the diagonal.`);
+  for (let l = 2; l <= n; l++) {
+    for (let i = 1; i <= n - l + 1; i++) {
+      const j = i + l - 1;
+      st.ci = i; st.cj = j; st.k = null; st.cand = [];
+      r.snap([2, 3, 4, 5], `Chain ${A(i)}…${A(j)} (length ${l}). Its last multiplication splits it after some A_k with ${i} ≤ k < ${j}. Try every k.`);
+      for (let k = i; k < j; k++) {
+        const m = p[i - 1] * p[k] * p[j], q = st.C[i][k] + st.C[k + 1][j] + m;
+        const better = st.C[i][j] === null || q < st.C[i][j];
+        if (better) { st.C[i][j] = q; st.s[i][j] = k; }
+        st.k = k;
+        st.cand.push({k, a: st.C[i][k], b: st.C[k + 1][j], m, q});
+        r.snap([6, 7, 8], `k = ${k}: (${A(i)}…${A(k)})(${A(k + 1)}…${A(j)}) costs C[${i},${k}] + C[${k + 1},${j}] + p${SUB[i - 1] || i - 1}·p${SUB[k] || k}·p${SUB[j] || j} = ${st.C[i][k]} + ${st.C[k + 1][j]} + ${p[i - 1]}·${p[k]}·${p[j]} = ${q}.${better ? ` New best: C[${i},${j}] = ${q}, s[${i},${j}] = ${k}.` : ` Not better than ${st.C[i][j]}.`}`);
+      }
+    }
+  }
+  st.ci = st.cj = st.k = null; st.cand = [];
+  st.order = parens(st.s, 1, n);
+  r.snap(9, `Done. The minimum cost is C[1,${n}] = ${st.C[1][n]} multiplications, using the order ${st.order}.`);
+  return r.out;
+}
+function renderMatrix(S) {
+  const {p, n} = S, cs = Math.min(80, 640 / Math.max(n, 1)), x0 = 70, y0 = 120;
+  let g = '';
+  // matrices row
+  const mw = Math.min(84, 720 / Math.max(n, 1));
+  for (let i = 1; i <= n; i++) {
+    const left = S.k !== null && i >= S.ci && i <= S.k, right = S.k !== null && i > S.k && i <= S.cj, inChain = S.ci !== null && i >= S.ci && i <= S.cj;
+    g += `<g class="mat${left ? ' left' : right ? ' right' : inChain ? ' chain' : ''}" transform="translate(${x0 + (i - 1) * mw},14)"><rect width="${mw - 8}" height="54" rx="6"/><text class="mn" x="${(mw - 8) / 2}" y="24">${A(i)}</text><text class="md" x="${(mw - 8) / 2}" y="43">${p[i - 1]}×${p[i]}</text></g>`;
+  }
+  // C table
+  g += `<text class="cap" x="${x0}" y="${y0 - 26}">C[i, j] with s[i, j] (row i, column j)</text>`;
+  for (let j = 1; j <= n; j++) g += `<text class="hdr" x="${x0 + (j - 1) * cs + cs / 2}" y="${y0 - 6}">j=${j}</text>`;
+  for (let i = 1; i <= n; i++) {
+    g += `<text class="rl" x="${x0 - 10}" y="${y0 + (i - 1) * cs + cs / 2 + 4}">i=${i}</text>`;
+    for (let j = i; j <= n; j++) {
+      const x = x0 + (j - 1) * cs, y = y0 + (i - 1) * cs;
+      const cur = S.ci === i && S.cj === j, sub = S.k !== null && ((i === S.ci && j === S.k) || (i === S.k + 1 && j === S.cj));
+      const v = S.C[i][j];
+      g += `<rect class="cell m${cur ? ' cur' : sub ? ' hr' : v !== null ? ' known' : ''}" x="${x + 3}" y="${y + 3}" width="${cs - 6}" height="${cs - 6}" rx="6"/>`;
+      g += `<text class="cv${sub ? ' warm' : ''}" x="${x + cs / 2}" y="${y + cs / 2 + (i === j ? 4 : 0)}" style="font-size:${cs < 64 ? 12 : 15}px">${v === null ? (cur ? '∞' : '') : v}</text>`;
+      if (i !== j && S.s[i][j] !== null) g += `<text class="cv small" x="${x + cs / 2}" y="${y + cs / 2 + 18}">k=${S.s[i][j]}</text>`;
+    }
+  }
+  setViz(800, y0 + n * cs + 16, g);
+  $('#viz-title').textContent = 'Matrices and DP table (bottom-up, by chain length)';
+  // result
+  const leftToRight = p.slice(2).reduce((acc, d, k) => acc + p[0] * p[k + 1] * d, 0);
+  const W = Array.from({length: n + 2}, () => Array(n + 2).fill(0));
+  for (let l = 2; l <= n; l++) for (let i = 1; i <= n - l + 1; i++) { const j = i + l - 1; for (let k = i; k < j; k++) W[i][j] = Math.max(W[i][j], W[i][k] + W[k + 1][j] + p[i - 1] * p[k] * p[j]); }
+  $('#res-title').textContent = 'Cheapest order';
+  $('#res').innerHTML = S.order
+    ? `<div class="tree-sum"><span class="total">${S.C[1][n].toLocaleString()}</span><span class="muted">scalar multiplications</span></div><p class="paren">${S.order}</p>
+       <table class="cmp"><tr><td>Optimal order</td><td>${S.C[1][n].toLocaleString()}</td></tr><tr><td>Left to right ${n > 2 ? `(((${A(1)}${A(2)})${A(3)})…)` : ''}</td><td>${leftToRight.toLocaleString()}</td></tr><tr><td>Worst order</td><td>${W[1][n].toLocaleString()}</td></tr></table>`
+    : `<span class="muted">Appears when C[1,${n}] is filled.</span>`;
+  // data
+  $('#data-title').textContent = S.ci !== null ? `Split points for ${A(S.ci)}…${A(S.cj)}` : 'Split points';
+  const best = S.ci !== null ? S.s[S.ci][S.cj] : null;
+  $('#data').innerHTML = S.cand.length
+    ? `<div class="tbl-wrap"><table><tr><th>k</th><th>C[i,k] + C[k+1,j] + p·p·p</th><th>total</th></tr>${S.cand.map(c => `<tr class="${c.k === best ? 'best' : ''}${c.k === S.k ? ' cur' : ''}"><td>${c.k}</td><td>${c.a} + ${c.b} + ${c.m}</td><td>${c.q}${c.k === best ? ' ★' : ''}</td></tr>`).join('')}</table></div>`
+    : '<span class="muted">No chain in progress.</span>';
+}
+
+/* =====================================================================
+   Shared: pseudocode, playback, rendering
+   ===================================================================== */
+const CODE = {
+  bottom: ['EXTENDED-BOTTOM-UP-CUT-ROD(p, n):', '  r[0] ← 0', '  for j ← 1 to n:                ▸ rod of length j', '    q ← −∞', '    for i ← 1 to j:              ▸ first piece has length i', '      if q < p[i] + r[j − i]:', '        q ← p[i] + r[j − i]; s[j] ← i', '    r[j] ← q', '  return r, s', 'PRINT-CUT-ROD-SOLUTION(p, n):', '  while n > 0:', '    print s[n]; n ← n − s[n]'],
+  memo: ['MEMOIZED-CUT-ROD(p, n):', '  r[0..n] ← −∞; return AUX(p, n, r)', 'AUX(p, n, r):', '  if r[n] ≥ 0: return r[n]       ▸ already solved', '  if n = 0: q ← 0', '  else q ← −∞', '    for i ← 1 to n:', '      q ← max(q, p[i] + AUX(p, n − i, r))', '  r[n] ← q', '  return q'],
+  naive: ['CUT-ROD(p, n):', '  if n = 0: return 0', '  q ← −∞', '  for i ← 1 to n:', '    q ← max(q, p[i] + CUT-ROD(p, n − i))', '  return q'],
+  matrix: ['MATRIX-CHAIN-ORDER(p, n):       ▸ Aᵢ is p[i−1] × p[i]', '  for i ← 1 to n: C[i, i] ← 0', '  for l ← 2 to n:                ▸ chain length', '    for i ← 1 to n − l + 1:', '      j ← i + l − 1', '      C[i, j] ← ∞', '      for k ← i to j − 1:', '        q ← C[i, k] + C[k+1, j] + p[i−1]·p[k]·p[j]', '        if q < C[i, j]: C[i, j] ← q; s[i, j] ← k', '  return C, s'],
+};
+const RT = {
+  bottom: 'Running time: Θ(n²) from the double loop. No recursion stack is needed.',
+  memo: 'Running time: Θ(n²). Each subproblem is solved once; its loop runs at most n times.',
+  naive: 'Running time: exponential, 2ⁿ calls, because the same subproblems are solved over and over.',
+  matrix: 'Running time: Θ(n³): Θ(n²) table cells, each trying up to n split points. Space Θ(n²).',
+};
+const LEGEND = {
+  rod: '<span><i class="sw curb"></i>current subproblem</span><span><i class="sw hp"></i>price of the first piece</span><span><i class="sw hr"></i>stored answer it reuses</span><span><i class="sw known"></i>solved</span>',
+  matrix: '<span><i class="sw curb"></i>cell being computed</span><span><i class="sw left"></i>left part Aᵢ…A_k</span><span><i class="sw hr"></i>right part and its stored cost</span><span><i class="sw known"></i>solved</span>',
+};
+const HINT = {rod: 'Change the length, the prices or the implementation above.', matrix: 'Type your own dimensions above (up to 8 matrices).'};
+
+function setViz(w, h, inner) {
+  const svg = $('#viz');
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.style.width = '100%';
+  svg.innerHTML = inner;
+}
+function generate() { return prob === 'rod' ? genRod() : genMatrix(); }
+function rebuild() {
+  stop(); steps = generate(); idx = 0;
+  $('#scrub').max = Math.max(0, steps.length - 1);
+  render();
+}
+function render() {
+  const S = steps[idx];
+  document.querySelectorAll('[data-for]').forEach(el => el.hidden = el.dataset.for !== prob);
+  $('#legend').innerHTML = LEGEND[prob];
+  $('#hint').textContent = HINT[prob];
+  $('#msg').textContent = S ? S.msg : '';
+  $('#counter').textContent = `Step ${idx + 1} / ${steps.length}`;
+  $('#scrub').value = idx;
+  $('#b-prev').disabled = $('#b-reset').disabled = idx === 0;
+  $('#b-next').disabled = $('#b-end').disabled = idx >= steps.length - 1;
+  const key = prob === 'rod' ? method : 'matrix';
+  $('#code').innerHTML = CODE[key].map((l, i) => `<div class="${S && S.line.includes(i) ? 'on' : ''}">${esc(l)}</div>`).join('');
+  $('#rt').textContent = RT[key];
+  if (!S || S.line.length === 0 && !S.p) return;
+  if (prob === 'rod' && S.n >= 1) renderRod(S);
+  else if (prob === 'matrix' && S.n >= 1) renderMatrix(S);
+}
+function go(i) { if (!steps.length) return; idx = clamp(i, 0, steps.length - 1); render(); }
+function next() { if (idx >= steps.length - 1) { stop(); return false; } idx++; render(); return true; }
+function speedMs() { return 1600 / Math.pow(1.45, +$('#speed').value - 1); }
+function play() {
+  if (timer) { stop(); return; }
+  if (idx >= steps.length - 1) idx = 0;
+  const tick = () => { if (next()) timer = setTimeout(tick, speedMs()); else stop(); };
+  timer = setTimeout(tick, 0);
+  $('#b-play').textContent = '❚❚ Pause';
+}
+function stop() { clearTimeout(timer); timer = null; $('#b-play').textContent = '▶ Play'; }
+
+/* ---------- controls ---------- */
+function bindSeg(sel, fn) {
+  $(sel).addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    $(sel).querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    fn(b.dataset.v);
+  });
+}
+bindSeg('#prob', v => { prob = v; rebuild(); });
+bindSeg('#method', v => { method = v; rebuild(); });
+function fillLengths() {
+  const max = Math.max(1, nums($('#prices').value).slice(0, 10).length), cur = +$('#rodn').value || 8;
+  $('#rodn').innerHTML = Array.from({length: max}, (_, i) => `<option ${i + 1 === Math.min(cur, max) ? 'selected' : ''}>${i + 1}</option>`).join('');
+}
+function checkInputs() {
+  const pr = nums($('#prices').value), dm = matInput();
+  $('#err').textContent = prob === 'rod' && !pr.length ? 'Enter at least one price.' : prob === 'matrix' && dm.length < 2 ? 'Enter at least two dimensions.' : prob === 'matrix' && nums($('#dims').value).length > 9 ? 'Only the first 8 matrices are used.' : '';
+}
+$('#rpreset').innerHTML = Object.entries(RPRESETS).map(([k, p]) => `<option value="${k}">${p.name}</option>`).join('');
+$('#rpreset').addEventListener('change', e => { const p = RPRESETS[e.target.value]; $('#prices').value = p.prices; fillLengths(); $('#rodn').value = p.n; rebuild(); });
+$('#prices').addEventListener('change', () => { fillLengths(); checkInputs(); rebuild(); });
+$('#rodn').addEventListener('change', rebuild);
+$('#mpreset').innerHTML = Object.entries(MPRESETS).map(([k, p]) => `<option value="${k}">${p.name}</option>`).join('');
+$('#mpreset').addEventListener('change', e => { $('#dims').value = MPRESETS[e.target.value].dims; checkInputs(); rebuild(); });
+$('#dims').addEventListener('change', () => { checkInputs(); rebuild(); });
+$('#b-reset').addEventListener('click', () => { stop(); go(0); });
+$('#b-prev').addEventListener('click', () => { stop(); go(idx - 1); });
+$('#b-next').addEventListener('click', () => { stop(); next(); });
+$('#b-end').addEventListener('click', () => { stop(); go(steps.length - 1); });
+$('#b-play').addEventListener('click', play);
+$('#scrub').addEventListener('input', e => { stop(); go(+e.target.value); });
+document.addEventListener('keydown', e => {
+  if (e.target.closest('select, input:not([type=checkbox]), textarea')) return;
+  if (e.key === 'ArrowRight') { e.preventDefault(); stop(); next(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); stop(); go(idx - 1); }
+  else if (e.key === 'Home') { stop(); go(0); }
+  else if (e.key === 'End') { stop(); go(steps.length - 1); }
+  else if (e.key === ' ' && !e.target.closest('button')) { e.preventDefault(); play(); }
+});
+
+// Open a specific problem from a link such as dp.html#matrix
+if (location.hash.slice(1) === 'matrix') {
+  prob = 'matrix';
+  $('#prob').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x.dataset.v === 'matrix'));
+}
+$('#prices').value = RPRESETS.slide8.prices; fillLengths(); $('#rodn').value = 8;
+$('#dims').value = MPRESETS.clrs.dims;
+rebuild();
+</script>
+</body>
+</html>
